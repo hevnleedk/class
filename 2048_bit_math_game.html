@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>2048 Bit Math Edition - Tablet Landscape</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;700;800;900&family=JetBrains+Mono:wght@600;800&display=swap');
+        
+        :root {
+            --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+            overscroll-behavior: none;
+            background: linear-gradient(135deg, #f0f4ff 0%, #fef3c7 40%, #f3e8ff 100%);
+        }
+
+        .font-mono-num {
+            font-family: var(--font-mono);
+        }
+
+        /* Responsive board size optimized for landscape mode */
+        .board-container {
+            position: relative;
+            aspect-ratio: 1 / 1;
+            width: min(82vw, 68vh, 480px);
+            height: min(82vw, 68vh, 480px);
+        }
+
+        /* Tile merge & spawn animations */
+        @keyframes pop {
+            0% { transform: scale(0.2) rotate(-6deg); opacity: 0; }
+            60% { transform: scale(1.12) rotate(2deg); }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+
+        @keyframes merge-bounce {
+            0% { transform: scale(0.88); }
+            40% { transform: scale(1.2) filter: brightness(1.25); }
+            70% { transform: scale(0.96); }
+            100% { transform: scale(1); filter: brightness(1); }
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 15px rgba(245, 158, 11, 0.4); }
+            50% { box-shadow: 0 0 28px rgba(245, 158, 11, 0.7); }
+        }
+
+        .tile-new {
+            animation: pop 220ms cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        .tile-merged {
+            animation: merge-bounce 260ms cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        .tile-2048 {
+            animation: pulse-glow 2s infinite ease-in-out;
+        }
+
+        /* Glassmorphism visual components */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.82);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            box-shadow: 0 10px 30px -5px rgba(99, 102, 241, 0.08);
+        }
+
+        .dpad-btn {
+            background: linear-gradient(145deg, #ffffff, #f1f5f9);
+            border: 1px solid rgba(226, 232, 240, 0.9);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+            transition: all 0.12s ease;
+        }
+
+        .dpad-btn:active {
+            transform: scale(0.92);
+            background: #e2e8f0;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(168, 85, 247, 0.3);
+            border-radius: 99px;
+        }
+    </style>
+</head>
+<body class="min-h-screen h-screen flex flex-col justify-between p-2 sm:p-4 md:p-5 text-slate-800 antialiased overflow-hidden select-none">
+
+    <header class="w-full max-w-6xl mx-auto flex items-center justify-between gap-3 shrink-0 py-1">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-gradient-to-tr from-amber-400 via-orange-400 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-orange-300/40 text-xl font-black shrink-0">
+                2<sup>n</sup>
+            </div>
+            <div>
+                <h1 class="text-xl md:text-2xl lg:text-3xl font-black tracking-tight text-slate-900 flex items-center gap-2">
+                    2048 <span class="text-[11px] md:text-xs font-extrabold font-mono px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-xs">BIT MATH</span>
+                </h1>
+                <p class="text-[11px] md:text-xs text-slate-500 font-medium hidden sm:block">태블릿 가로화면 맞춤 · 이진 비트 연산 퍼즐</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <button id="soundToggleBtn" onclick="toggleSound()" class="w-10 h-10 rounded-2xl glass-card hover:bg-white text-slate-600 border border-slate-200 flex items-center justify-center transition shadow-xs hover:scale-105 active:scale-95" title="음소거 설정">
+                <i id="soundIcon" class="fas fa-volume-up text-sm"></i>
+            </button>
+            <button onclick="toggleInfoModal()" class="w-10 h-10 rounded-2xl bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200/80 flex items-center justify-center transition shadow-xs hover:scale-105 active:scale-95" title="비트 개념 설명">
+                <i class="fas fa-lightbulb text-base"></i>
+            </button>
+            <button onclick="resetGame()" class="px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-bold text-xs md:text-sm shadow-md shadow-orange-400/30 transition hover:scale-105 active:scale-95 flex items-center gap-1.5">
+                <i class="fas fa-rotate-right"></i> <span class="hidden sm:inline">새 게임</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Tablet Landscape Layout Container: Left (Board) & Right (Controls & Stats) -->
+    <main class="w-full max-w-6xl mx-auto flex-1 flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8 my-auto overflow-hidden">
+        
+        <!-- LEFT COLUMN: Game Board -->
+        <div class="flex flex-col items-center justify-center shrink-0">
+            <div id="gameBoard" class="board-container glass-card p-2.5 sm:p-3.5 rounded-3xl border-2 border-white/90 shadow-2xl shadow-indigo-200/50 relative overflow-hidden">
+                
+                <!-- 4x4 Grid Background -->
+                <div class="grid grid-cols-4 grid-rows-4 gap-2 sm:gap-3 w-full h-full">
+                    <div class="bg-slate-200/60 rounded-2xl border border-slate-300/40"></div>
+                    <div class="bg-slate-200/60 rounded-2xl border border-slate-300/40"></div>
+                    <div class="bg-slate-200/60 rounded-2xl border border-slate-300/40"></div>
+                    <div class="bg-slate-200/60 rounded-2xl border border-slate-300/40"></div>
+                    
+                    <div class="bg-slate-200/60 rounded-2xl border border-slate-300/40"></div>
+                    <div class="bg-slate-200/60 rounded-2xl border border-slate-300/40"></div>
+                    <div class="bg-slate-200/60 rounded-2xl border border-slate-300/40"></div>
+                    <div class="bg-slate-200/60 rounded-2xl border border-slate-300/40"></div>
+                    
+                    <div class="bg-slate-200/60 rounded-2xl border border-slate-300/40"></div>
+                    <div class="bg-slate-200/60 rounded-2xl border border-slate-300/40"></div>
+                    <div class="bg-slate-200/60 rounded-2xl border border-slate-300/40"></div>
+                    <div class="bg-slate-200/60 rounded-2xl border border-slate-300/40"></div>
+                    
+                    <div class="bg-slate-200/60 rounded-2xl border border-slate-300/40"></div>
+                    <div class="bg-slate-200/60 rounded-2xl border border-slate-300/40"></div>
+                    <div class="bg-slate-200/60 rounded-2xl border border-slate-300/40"></div>
+                    <div class="bg-slate-200/60 rounded-2xl border border-slate-300/40"></div>
+                </div>
+
+                <!-- Active Sliding Tiles Layer -->
+                <div id="tilesContainer" class="absolute inset-0 p-2.5 sm:p-3.5 pointer-events-none z-10"></div>
+
+                <!-- Overlay for Win / Game Over -->
+                <div id="overlay" class="absolute inset-0 bg-white/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center opacity-0 pointer-events-none transition-all duration-300 z-30">
+                    <div id="overlayBadge" class="w-16 h-16 md:w-20 md:h-20 rounded-3xl bg-amber-100 text-amber-500 border border-amber-300/60 flex items-center justify-center text-3xl md:text-4xl mb-3 shadow-xl">
+                        <i class="fas fa-trophy"></i>
+                    </div>
+                    <h2 id="overlayTitle" class="text-2xl md:text-3xl font-black text-slate-900 mb-1">축하합니다!</h2>
+                    <p id="overlaySub" class="text-xs md:text-sm text-slate-600 mb-5 max-w-xs font-medium">2048 타일을 완성하여 11bit 메모리 용량을 달성했습니다!</p>
+                    
+                    <div class="flex gap-3">
+                        <button id="undoOverlayBtn" onclick="undoMove()" class="px-4 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition flex items-center gap-2 border border-slate-300 shadow-xs">
+                            <i class="fas fa-rotate-left"></i> 되돌리기
+                        </button>
+                        <button onclick="resetGame()" class="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-extrabold text-xs md:text-sm shadow-md shadow-orange-400/30 transition flex items-center gap-2">
+                            <i class="fas fa-play"></i> 다시 시작
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT COLUMN: Control Panel & Stats (Positioned Right for Landscape Use) -->
+        <div class="w-full md:w-72 lg:w-80 flex flex-col items-center justify-between gap-3 h-full max-h-[480px]">
+            
+            <!-- Stats Display Header Grid -->
+            <div class="w-full grid grid-cols-3 gap-2">
+                <div class="glass-card rounded-2xl p-2 text-center border border-amber-200/60">
+                    <span class="text-[9px] md:text-[10px] uppercase tracking-wider text-slate-400 font-bold block">SCORE</span>
+                    <span id="scoreDisplay" class="text-lg md:text-xl font-black font-mono-num text-amber-600">0</span>
+                </div>
+                <div class="glass-card rounded-2xl p-2 text-center border border-indigo-200/60">
+                    <span class="text-[9px] md:text-[10px] uppercase tracking-wider text-slate-400 font-bold block">BEST</span>
+                    <span id="bestScoreDisplay" class="text-lg md:text-xl font-black font-mono-num text-indigo-600">0</span>
+                </div>
+                <div class="glass-card rounded-2xl p-2 text-center border border-emerald-200/60">
+                    <span class="text-[9px] md:text-[10px] uppercase tracking-wider text-slate-400 font-bold block">MAX BIT</span>
+                    <span id="maxBitDisplay" class="text-lg md:text-xl font-black font-mono-num text-emerald-600">0 bit</span>
+                </div>
+            </div>
+
+            <!-- RIGHT-SIDE DIRECTIONAL CONTROLLER (D-PAD) -->
+            <div class="glass-card w-full p-3.5 rounded-3xl border border-white/90 shadow-md flex flex-col items-center justify-center relative">
+                <div class="text-[11px] font-bold text-slate-400 mb-2 flex items-center gap-1">
+                    <i class="fas fa-gamepad text-amber-500"></i> 오른쪽 방향키 컨트롤러 (스와이프 가능)
+                </div>
+
+                <!-- Cross Directional Buttons -->
+                <div class="grid grid-cols-3 grid-rows-3 gap-2 w-44 h-44 my-1">
+                    <div></div>
+                    <button onclick="handleInput('up')" class="dpad-btn rounded-2xl text-slate-700 flex items-center justify-center text-lg active:text-amber-600" title="위로 이동">
+                        <i class="fas fa-chevron-up"></i>
+                    </button>
+                    <div></div>
+
+                    <button onclick="handleInput('left')" class="dpad-btn rounded-2xl text-slate-700 flex items-center justify-center text-lg active:text-amber-600" title="왼쪽으로 이동">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <button onclick="undoMove()" class="dpad-btn rounded-2xl text-amber-600 bg-amber-50/80 flex items-center justify-center text-sm font-bold" title="한 단계를 되돌립니다">
+                        <i class="fas fa-undo"></i>
+                    </button>
+                    <button onclick="handleInput('right')" class="dpad-btn rounded-2xl text-slate-700 flex items-center justify-center text-lg active:text-amber-600" title="오른쪽으로 이동">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+
+                    <div></div>
+                    <button onclick="handleInput('down')" class="dpad-btn rounded-2xl text-slate-700 flex items-center justify-center text-lg active:text-amber-600" title="아래로 이동">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div></div>
+                </div>
+            </div>
+
+            <!-- Bit Quick Reference Panel -->
+            <div class="w-full glass-card rounded-2xl p-2.5 border border-amber-200/50">
+                <div class="flex items-center justify-between text-[11px] font-extrabold text-slate-700 mb-1.5">
+                    <span class="flex items-center gap-1">
+                        <i class="fas fa-microchip text-indigo-500"></i> 비트 표기 규칙 예시
+                    </span>
+                    <span class="text-[10px] font-mono text-amber-600">값 , 2ⁿ nbit</span>
+                </div>
+                <div class="grid grid-cols-4 gap-1 text-center font-mono text-[10px]">
+                    <div class="bg-white/80 p-1 rounded-xl border border-slate-200/60">
+                        <div class="font-extrabold text-amber-600">4</div>
+                        <div class="text-[9px] text-slate-500">2², 2bit</div>
+                    </div>
+                    <div class="bg-white/80 p-1 rounded-xl border border-slate-200/60">
+                        <div class="font-extrabold text-orange-600">16</div>
+                        <div class="text-[9px] text-slate-500">2⁴, 4bit</div>
+                    </div>
+                    <div class="bg-white/80 p-1 rounded-xl border border-slate-200/60">
+                        <div class="font-extrabold text-indigo-600">256</div>
+                        <div class="text-[9px] text-slate-500">2⁸, 8bit</div>
+                    </div>
+                    <div class="bg-white/80 p-1 rounded-xl border border-slate-200/60">
+                        <div class="font-extrabold text-emerald-600">2048</div>
+                        <div class="text-[9px] text-slate-500">2¹¹, 11bit</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <footer class="w-full max-w-6xl mx-auto shrink-0 py-1 text-center text-[11px] text-slate-500 font-medium">
+        방향키(키보드) / 오른쪽 패널 버튼 / 화면 스와이프 제스처로 컨트롤하세요.
+    </footer>
+
+    <!-- Bit Math CS Info Modal -->
+    <div id="infoModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-all duration-200">
+        <div class="bg-white border border-slate-100 rounded-3xl max-w-md w-full p-5 shadow-2xl text-slate-700 space-y-3.5 max-h-[90vh] overflow-y-auto transform transition-all scale-95">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                <h3 class="text-base font-black text-slate-900 flex items-center gap-2">
+                    <i class="fas fa-brain text-amber-500"></i> 타일 표기 방식과 비트(Bit) 원리
+                </h3>
+                <button onclick="toggleInfoModal()" class="w-7 h-7 rounded-full bg-slate-100 text-slate-400 hover:text-slate-800 flex items-center justify-center transition">
+                    <i class="fas fa-times text-xs"></i>
+                </button>
+            </div>
+
+            <p class="text-xs text-slate-600 leading-relaxed">
+                각 타일에는 요청하신대로 <strong class="text-indigo-600">값, 2ⁿ nbit</strong> 형태로 표기됩니다.<br>
+                예: <span class="font-mono bg-amber-100 px-1.5 py-0.5 rounded text-amber-900 font-bold">4 , 2² 2bit</span>
+            </p>
+
+            <div class="space-y-2 text-xs">
+                <div class="bg-amber-50/70 p-2.5 rounded-2xl border border-amber-200/60 flex justify-between items-center">
+                    <div>
+                        <span class="font-bold text-amber-900 font-mono">4 , 2² 2bit</span>
+                        <p class="text-[11px] text-amber-700/80">4가지 데이터 상태 표현 (00, 01, 10, 11)</p>
+                    </div>
+                    <span class="px-2 py-0.5 bg-amber-200 text-amber-900 rounded font-mono text-[10px] font-bold">0b100</span>
+                </div>
+                <div class="bg-indigo-50/70 p-2.5 rounded-2xl border border-indigo-200/60 flex justify-between items-center">
+                    <div>
+                        <span class="font-bold text-indigo-900 font-mono">256 , 2⁸ 8bit</span>
+                        <p class="text-[11px] text-indigo-700/80">8 비트 = <strong>1 바이트(1 Byte)</strong></p>
+                    </div>
+                    <span class="px-2 py-0.5 bg-indigo-200 text-indigo-900 rounded font-mono text-[10px] font-bold">1 Byte</span>
+                </div>
+                <div class="bg-emerald-50/70 p-2.5 rounded-2xl border border-emerald-200/60 flex justify-between items-center">
+                    <div>
+                        <span class="font-bold text-emerald-900 font-mono">2048 , 2¹¹ 11bit</span>
+                        <p class="text-[11px] text-emerald-700/80">2048가지 정보 상태 표현</p>
+                    </div>
+                    <span class="px-2 py-0.5 bg-emerald-200 text-emerald-900 rounded font-mono text-[10px] font-bold">2 KiB</span>
+                </div>
+            </div>
+
+            <button onclick="toggleInfoModal()" class="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 font-extrabold rounded-2xl text-xs text-white shadow-md shadow-orange-300/40 transition">
+                게임으로 돌아가기
+            </button>
+        </div>
+    </div>
+
+    <!-- JavaScript Game Logic -->
+    <script>
+        const BOARD_SIZE = 4;
+        let board = Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(0));
+        let score = 0;
+        let bestScore = parseInt(localStorage.getItem('2048_bit_math_landscape_best') || '0');
+        let soundEnabled = true;
+        let previousState = null;
+        let wonGame = false;
+
+        // Audio Synthesizer for rich Web Audio sound effects
+        let audioCtx = null;
+
+        function getAudioContext() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) audioCtx = new AudioContext();
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+            try {
+                const ctx = getAudioContext();
+                if (!ctx) return;
+
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
+                const now = ctx.currentTime;
+
+                if (type === 'move') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(340, now);
+                    osc.frequency.exponentialRampToValueAtTime(520, now + 0.07);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+                    osc.start(now);
+                    osc.stop(now + 0.07);
+                } else if (type === 'merge') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(540, now);
+                    osc.frequency.exponentialRampToValueAtTime(1080, now + 0.12);
+                    gain.gain.setValueAtTime(0.18, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+                    osc.start(now);
+                    osc.stop(now + 0.12);
+                } else if (type === 'win') {
+                    [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+                        const o = ctx.createOscillator();
+                        const g = ctx.createGain();
+                        o.connect(g);
+                        g.connect(ctx.destination);
+                        o.frequency.setValueAtTime(freq, now + idx * 0.09);
+                        g.gain.setValueAtTime(0.15, now + idx * 0.09);
+                        g.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.09 + 0.28);
+                        o.start(now + idx * 0.09);
+                        o.stop(now + idx * 0.09 + 0.28);
+                    });
+                } else if (type === 'gameover') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(260, now);
+                    osc.frequency.exponentialRampToValueAtTime(100, now + 0.32);
+                    gain.gain.setValueAtTime(0.18, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+                    osc.start(now);
+                    osc.stop(now + 0.32);
+                }
+            } catch(e) {
+                console.log("Audio play error", e);
+            }
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            const icon = document.getElementById('soundIcon');
+            const btn = document.getElementById('soundToggleBtn');
+            if (soundEnabled) {
+                icon.className = 'fas fa-volume-up text-sm';
+                btn.classList.remove('opacity-50');
+            } else {
+                icon.className = 'fas fa-volume-mute text-sm';
+                btn.classList.add('opacity-50');
+            }
+        }
+
+        function getTileStyle(val) {
+            const styles = {
+                2:    { bg: 'bg-gradient-to-br from-amber-100 to-amber-200', text: 'text-amber-950', border: 'border-amber-300/80', shadow: 'shadow-amber-200/50' },
+                4:    { bg: 'bg-gradient-to-br from-orange-100 to-orange-200', text: 'text-orange-950', border: 'border-orange-300/80', shadow: 'shadow-orange-200/50' },
+                8:    { bg: 'bg-gradient-to-br from-amber-400 to-orange-500', text: 'text-white', border: 'border-amber-300', shadow: 'shadow-orange-300/60' },
+                16:   { bg: 'bg-gradient-to-br from-orange-500 to-red-500', text: 'text-white', border: 'border-orange-400', shadow: 'shadow-red-300/60' },
+                32:   { bg: 'bg-gradient-to-br from-rose-500 to-pink-500', text: 'text-white', border: 'border-rose-400', shadow: 'shadow-pink-300/60' },
+                64:   { bg: 'bg-gradient-to-br from-pink-500 to-purple-600', text: 'text-white', border: 'border-pink-400', shadow: 'shadow-purple-300/60' },
+                128:  { bg: 'bg-gradient-to-br from-purple-500 to-indigo-600', text: 'text-white', border: 'border-purple-300', shadow: 'shadow-indigo-300/60' },
+                256:  { bg: 'bg-gradient-to-br from-indigo-500 to-blue-600', text: 'text-white', border: 'border-indigo-300', shadow: 'shadow-blue-300/60' },
+                512:  { bg: 'bg-gradient-to-br from-cyan-500 to-teal-500', text: 'text-white', border: 'border-cyan-300', shadow: 'shadow-teal-300/60' },
+                1024: { bg: 'bg-gradient-to-br from-emerald-400 to-green-600', text: 'text-white', border: 'border-emerald-300', shadow: 'shadow-emerald-300/60' },
+                2048: { bg: 'bg-gradient-to-br from-yellow-300 via-amber-400 to-orange-500 tile-2048', text: 'text-slate-900', border: 'border-yellow-200 ring-4 ring-amber-300/50', shadow: 'shadow-amber-400/80' },
+                4096: { bg: 'bg-gradient-to-br from-fuchsia-500 to-pink-600', text: 'text-white', border: 'border-fuchsia-300', shadow: 'shadow-fuchsia-300/60' }
+            };
+            return styles[val] || { bg: 'bg-gradient-to-br from-slate-800 to-slate-900', text: 'text-amber-300', border: 'border-amber-400', shadow: 'shadow-slate-400' };
+        }
+
+        function getBitMathInfo(val) {
+            if (val <= 0) return { exp: 0, bit: 0 };
+            const exp = Math.round(Math.log2(val));
+            return { exp: exp, bit: exp };
+        }
+
+        function renderBoard(mergedCoords = []) {
+            const container = document.getElementById('tilesContainer');
+            container.innerHTML = '';
+
+            let maxTileVal = 2;
+
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    const val = board[r][c];
+                    if (val > 0) {
+                        if (val > maxTileVal) maxTileVal = val;
+
+                        const tileStyle = getTileStyle(val);
+                        const mathInfo = getBitMathInfo(val);
+
+                        const isMerged = mergedCoords.some(coord => coord.r === r && coord.c === c);
+
+                        const tileDiv = document.createElement('div');
+                        tileDiv.className = `absolute rounded-2xl sm:rounded-3xl border flex flex-col items-center justify-center shadow-lg transition-all duration-100 ${tileStyle.bg} ${tileStyle.text} ${tileStyle.border} ${tileStyle.shadow} ${isMerged ? 'tile-merged' : 'tile-new'}`;
+                        
+                        const topPercent = r * 25;
+                        const leftPercent = c * 25;
+                        tileDiv.style.top = `calc(${topPercent}% + 3px)`;
+                        tileDiv.style.left = `calc(${leftPercent}% + 3px)`;
+                        tileDiv.style.width = `calc(25% - 6px)`;
+                        tileDiv.style.height = `calc(25% - 6px)`;
+
+                        let numSizeClass = 'text-xl sm:text-2xl lg:text-3xl font-black';
+                        if (val >= 1024) numSizeClass = 'text-lg sm:text-xl lg:text-2xl font-black';
+                        if (val >= 10000) numSizeClass = 'text-base sm:text-lg font-black';
+
+                        // Specific requested label format: "4 , 2^2 2bit"
+                        tileDiv.innerHTML = `
+                            <div class="${numSizeClass} leading-none font-mono-num tracking-tight filter drop-shadow-xs">${val}</div>
+                            <div class="text-[9px] sm:text-[10px] lg:text-xs font-bold opacity-90 font-mono mt-0.5 sm:mt-1 flex items-center gap-0.5 bg-black/10 px-1.5 py-0.5 rounded-full backdrop-blur-2xs">
+                                <span>, 2<sup>${mathInfo.exp}</sup></span>
+                                <span>${mathInfo.bit}bit</span>
+                            </div>
+                        `;
+
+                        container.appendChild(tileDiv);
+                    }
+                }
+            }
+
+            // Update scores
+            document.getElementById('scoreDisplay').innerText = score;
+            if (score > bestScore) {
+                bestScore = score;
+                localStorage.setItem('2048_bit_math_landscape_best', bestScore);
+            }
+            document.getElementById('bestScoreDisplay').innerText = bestScore;
+
+            const maxBit = Math.round(Math.log2(maxTileVal));
+            document.getElementById('maxBitDisplay').innerText = `${maxBit} bit`;
+        }
+
+        function triggerMergeSparks(r, c) {
+            const container = document.getElementById('gameBoard');
+            const rect = container.getBoundingClientRect();
+            
+            const cellWidth = rect.width / 4;
+            const cellHeight = rect.height / 4;
+            
+            const originX = (rect.left + (c + 0.5) * cellWidth) / window.innerWidth;
+            const originY = (rect.top + (r + 0.5) * cellHeight) / window.innerHeight;
+
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 14,
+                    spread: 45,
+                    startVelocity: 16,
+                    origin: { x: originX, y: originY },
+                    colors: ['#f59e0b', '#ec4899', '#6366f1', '#10b981'],
+                    ticks: 35,
+                    gravity: 0.8,
+                    scalar: 0.65,
+                    disableForReducedMotion: true
+                });
+            }
+        }
+
+        function saveState() {
+            previousState = {
+                board: board.map(row => [...row]),
+                score: score
+            };
+        }
+
+        function undoMove() {
+            if (!previousState) return;
+            board = previousState.board.map(row => [...row]);
+            score = previousState.score;
+            previousState = null;
+            hideOverlay();
+            renderBoard();
+        }
+
+        function spawnRandomTile() {
+            const emptyCells = [];
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    if (board[r][c] === 0) emptyCells.push({ r, c });
+                }
+            }
+            if (emptyCells.length === 0) return;
+
+            const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+            board[randomCell.r][randomCell.c] = Math.random() < 0.88 ? 2 : 4;
+        }
+
+        function slide(row) {
+            let arr = row.filter(val => val !== 0);
+            let mergedIndices = [];
+            let scoreGain = 0;
+
+            for (let i = 0; i < arr.length - 1; i++) {
+                if (arr[i] === arr[i + 1]) {
+                    arr[i] *= 2;
+                    scoreGain += arr[i];
+                    arr[i + 1] = 0;
+                    mergedIndices.push(i);
+                }
+            }
+
+            arr = arr.filter(val => val !== 0);
+            while (arr.length < BOARD_SIZE) {
+                arr.push(0);
+            }
+
+            return { newRow: arr, scoreGain, mergedIndices };
+        }
+
+        function handleInput(direction) {
+            saveState();
+
+            let moved = false;
+            let totalGain = 0;
+            let mergedCoords = [];
+
+            if (direction === 'left' || direction === 'right') {
+                for (let r = 0; r < BOARD_SIZE; r++) {
+                    let row = [...board[r]];
+                    if (direction === 'right') row.reverse();
+
+                    const res = slide(row);
+                    let newRow = res.newRow;
+                    totalGain += res.scoreGain;
+
+                    if (direction === 'right') newRow.reverse();
+
+                    res.mergedIndices.forEach(idx => {
+                        const targetC = direction === 'right' ? (BOARD_SIZE - 1 - idx) : idx;
+                        mergedCoords.push({ r, c: targetC });
+                        triggerMergeSparks(r, targetC);
+                    });
+
+                    for (let c = 0; c < BOARD_SIZE; c++) {
+                        if (board[r][c] !== newRow[c]) moved = true;
+                        board[r][c] = newRow[c];
+                    }
+                }
+            } else if (direction === 'up' || direction === 'down') {
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    let col = [];
+                    for (let r = 0; r < BOARD_SIZE; r++) col.push(board[r][c]);
+
+                    if (direction === 'down') col.reverse();
+
+                    const res = slide(col);
+                    let newCol = res.newRow;
+                    totalGain += res.scoreGain;
+
+                    if (direction === 'down') newCol.reverse();
+
+                    res.mergedIndices.forEach(idx => {
+                        const targetR = direction === 'down' ? (BOARD_SIZE - 1 - idx) : idx;
+                        mergedCoords.push({ r: targetR, c });
+                        triggerMergeSparks(targetR, c);
+                    });
+
+                    for (let r = 0; r < BOARD_SIZE; r++) {
+                        if (board[r][c] !== newCol[r]) moved = true;
+                        board[r][c] = newCol[r];
+                    }
+                }
+            }
+
+            if (moved) {
+                score += totalGain;
+                if (totalGain > 0) {
+                    playSound('merge');
+                } else {
+                    playSound('move');
+                }
+
+                spawnRandomTile();
+                renderBoard(mergedCoords);
+
+                checkGameStatus();
+            } else {
+                previousState = null;
+            }
+        }
+
+        function checkGameStatus() {
+            if (!wonGame) {
+                for (let r = 0; r < BOARD_SIZE; r++) {
+                    for (let c = 0; c < BOARD_SIZE; c++) {
+                        if (board[r][c] === 2048) {
+                            wonGame = true;
+                            playSound('win');
+                            if (typeof confetti === 'function') {
+                                confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+                            }
+                            showOverlay('2048 달성!', '11bit(2¹¹) 메모리 타일을 완성했습니다!', 'trophy');
+                            return;
+                        }
+                    }
+                }
+            }
+
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    if (board[r][c] === 0) return;
+                }
+            }
+
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    const current = board[r][c];
+                    if (c < BOARD_SIZE - 1 && board[r][c + 1] === current) return;
+                    if (r < BOARD_SIZE - 1 && board[r + 1][c] === current) return;
+                }
+            }
+
+            playSound('gameover');
+            showOverlay('게임 종료!', '더 이상 이동 가능한 블록 조합이 없습니다.', 'gamepad');
+        }
+
+        function showOverlay(title, sub, iconType) {
+            const overlay = document.getElementById('overlay');
+            const overlayTitle = document.getElementById('overlayTitle');
+            const overlaySub = document.getElementById('overlaySub');
+            const overlayBadge = document.getElementById('overlayBadge');
+
+            overlayTitle.innerText = title;
+            overlaySub.innerText = sub;
+            
+            if (iconType === 'trophy') {
+                overlayBadge.innerHTML = '<i class="fas fa-trophy"></i>';
+                overlayBadge.className = 'w-16 h-16 md:w-20 md:h-20 rounded-3xl bg-amber-100 text-amber-500 border border-amber-300 flex items-center justify-center text-3xl md:text-4xl mb-3 shadow-xl';
+            } else {
+                overlayBadge.innerHTML = '<i class="fas fa-gamepad"></i>';
+                overlayBadge.className = 'w-16 h-16 md:w-20 md:h-20 rounded-3xl bg-rose-100 text-rose-500 border border-rose-300 flex items-center justify-center text-3xl md:text-4xl mb-3 shadow-xl';
+            }
+
+            overlay.classList.remove('opacity-0', 'pointer-events-none');
+            overlay.classList.add('opacity-100');
+        }
+
+        function hideOverlay() {
+            const overlay = document.getElementById('overlay');
+            overlay.classList.remove('opacity-100');
+            overlay.classList.add('opacity-0', 'pointer-events-none');
+        }
+
+        function resetGame() {
+            board = Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(0));
+            score = 0;
+            wonGame = false;
+            previousState = null;
+            hideOverlay();
+            spawnRandomTile();
+            spawnRandomTile();
+            renderBoard();
+        }
+
+        function toggleInfoModal() {
+            const modal = document.getElementById('infoModal');
+            if (modal.classList.contains('opacity-0')) {
+                modal.classList.remove('opacity-0', 'pointer-events-none');
+                modal.classList.add('opacity-100');
+            } else {
+                modal.classList.remove('opacity-100');
+                modal.classList.add('opacity-0', 'pointer-events-none');
+            }
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+                e.preventDefault();
+                handleInput('left');
+            } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+                e.preventDefault();
+                handleInput('right');
+            } else if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
+                e.preventDefault();
+                handleInput('up');
+            } else if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') {
+                e.preventDefault();
+                handleInput('down');
+            }
+        });
+
+        // Touch Swipe Handling across whole viewport / game board
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchEndX = 0;
+        let touchEndY = 0;
+
+        const boardElem = document.getElementById('gameBoard');
+
+        boardElem.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 0) {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+            }
+        }, { passive: true });
+
+        boardElem.addEventListener('touchend', (e) => {
+            if (e.changedTouches.length > 0) {
+                touchEndX = e.changedTouches[0].clientX;
+                touchEndY = e.changedTouches[0].clientY;
+                handleSwipe();
+            }
+        }, { passive: true });
+
+        function handleSwipe() {
+            const dx = touchEndX - touchStartX;
+            const dy = touchEndY - touchStartY;
+            const absDx = Math.abs(dx);
+            const absDy = Math.abs(dy);
+
+            const MIN_SWIPE_DISTANCE = 22;
+
+            if (Math.max(absDx, absDy) > MIN_SWIPE_DISTANCE) {
+                if (absDx > absDy) {
+                    if (dx > 0) handleInput('right');
+                    else handleInput('left');
+                } else {
+                    if (dy > 0) handleInput('down');
+                    else handleInput('up');
+                }
+            }
+        }
+
+        window.onload = function() {
+            resetGame();
+        };
+    </script>
+</body>
+</html>
