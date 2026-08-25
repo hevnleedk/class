@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>활동: 이미지 데이터 크기 비교하기</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+
+        body {
+            font-family: 'Segoe UI', 'Noto Sans KR', sans-serif; /* Windows 기본 폰트 느낌 */
+            background-color: #f3f4f6;
+            color: #1f2937;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 윈도우 창 느낌의 테두리 */
+        .window-container {
+            max-width: 1000px;
+            margin: 1rem auto;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0; /* flex 버그 방지 */
+        }
+
+        /* 그림판 상단 메뉴바 */
+        .menu-bar {
+            background-color: #f5f6f7;
+            border-bottom: 1px solid #e1dfdd;
+            display: flex;
+            padding: 0 10px;
+            font-size: 13px;
+        }
+
+        .menu-item {
+            padding: 6px 12px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .menu-item:hover {
+            background-color: #e5e5e5;
+        }
+
+        .menu-item.active {
+            background-color: #fff;
+            border: 1px solid #e1dfdd;
+            border-bottom: none;
+            margin-bottom: -1px; /* 툴바와 이어지게 */
+            z-index: 10;
+        }
+
+        /* 파일 드롭다운 메뉴 */
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background-color: #f9f9f9;
+            min-width: 250px;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+            border: 1px solid #ccc;
+            z-index: 100;
+            padding: 5px 0;
+        }
+
+        .menu-item:hover .dropdown-content {
+            /* hover 시 나타나게 할 수도 있지만, 클릭 이벤트로 제어하기 위해 여기선 사용 안 함 */
+        }
+        
+        .dropdown-content.show {
+            display: block;
+        }
+
+        .dropdown-item {
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+        
+        .dropdown-item:hover {
+            background-color: #e5e5e5;
+        }
+
+        .dropdown-item i {
+            width: 24px;
+            text-align: center;
+            margin-right: 10px;
+            color: #555;
+        }
+
+        /* 하위 메뉴 (다른 이름으로 저장) */
+        .sub-menu-container {
+            position: relative;
+        }
+
+        .sub-menu-content {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 100%;
+            background-color: #f9f9f9;
+            min-width: 180px;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+            border: 1px solid #ccc;
+        }
+
+        .sub-menu-container:hover .sub-menu-content {
+            display: block;
+        }
+        
+        .sub-menu-item {
+            padding: 8px 16px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .sub-menu-item:hover {
+            background-color: #e5e5e5;
+        }
+        
+        /* 비활성화 상태 */
+        .disabled-menu {
+            color: #999;
+            pointer-events: none;
+        }
+
+        /* 툴바 영역 (가짜 아이콘들) */
+        .toolbar {
+            background-color: #f5f6f7;
+            border-bottom: 1px solid #e1dfdd;
+            padding: 8px 10px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            overflow-x: auto;
+        }
+
+        .tool-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2px;
+            border-right: 1px solid #ccc;
+            padding-right: 15px;
+        }
+        
+        .tool-group:last-child {
+            border-right: none;
+        }
+
+        .tool-btn {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            cursor: pointer;
+            color: #333;
+        }
+        
+        .tool-btn:hover {
+            background-color: #e5e5e5;
+        }
+        
+        .color-palette {
+            display: grid;
+            grid-template-columns: repeat(10, 15px);
+            gap: 2px;
+        }
+        
+        .color-box {
+            width: 15px;
+            height: 15px;
+            border: 1px solid #999;
+            cursor: pointer;
+        }
+
+        /* 캔버스 작업 영역 */
+        .workspace {
+            flex: 1;
+            background-color: #e5e5e5;
+            padding: 20px;
+            overflow: auto;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* 상단 정렬 */
+        }
+
+        .canvas-area {
+            background-color: white;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+            min-width: 400px;
+            min-height: 300px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            /* 리사이즈 핸들 가짜 디자인 */
+            border: 1px dashed transparent; 
+        }
+        
+        .canvas-area.has-image {
+            border: 1px dashed #000;
+        }
+        
+        .resize-handle {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background-color: white;
+            border: 1px solid black;
+            display: none;
+        }
+        
+        .canvas-area.has-image .resize-handle {
+            display: block;
+        }
+
+        /* 상태 표시줄 */
+        .status-bar {
+            background-color: #f5f6f7;
+            border-top: 1px solid #e1dfdd;
+            padding: 4px 10px;
+            font-size: 11px;
+            color: #555;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* 모달 창 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            width: 300px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+
+        /* Font Awesome 임시 대체 (SVG 아이콘) */
+        .icon {
+            display: inline-block;
+            width: 1em;
+            height: 1em;
+            stroke-width: 0;
+            stroke: currentColor;
+            fill: currentColor;
+        }
+
+        /* 숨기기 유틸 */
+        .hidden { display: none !important; }
+        
+        /* 테이블 스타일 조정 (기존 유지, 약간 축소) */
+        .info-section {
+            padding: 1rem;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            font-size: 14px;
+        }
+        th, td { border: 1px solid #d1d5db; padding: 0.75rem; text-align: left; vertical-align: top; }
+        th { background-color: #fef08a; font-weight: bold; text-align: center; }
+        .description-list { list-style-type: square; padding-left: 1.2rem; margin: 0; line-height: 1.5; }
+        .highlight-text { color: #ef4444; font-style: italic; }
+        #hiddenCanvas { display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="window-container">
+        
+        <!-- 상단 메뉴바 -->
+        <div class="menu-bar">
+            <div class="menu-item active" id="fileMenuBtn">
+                파일(F)
+                <!-- 드롭다운 내용 -->
+                <div class="dropdown-content" id="fileDropdown">
+                    <div class="dropdown-item">
+                        <i>📄</i> 새로 만들기(N)
+                    </div>
+                    <!-- 사진 불러오기 (실제 기능) -->
+                    <label class="dropdown-item" style="cursor: pointer;">
+                        <i>📁</i> 열기(O)...
+                        <input type="file" id="imageInput" accept="image/*" style="display: none;">
+                    </label>
+                    <div style="border-top: 1px solid #ccc; margin: 5px 0;"></div>
+                    <div class="dropdown-item">
+                        <i>💾</i> 저장(S)
+                    </div>
+                    <!-- 다른 이름으로 저장 (하위 메뉴) -->
+                    <div class="dropdown-item sub-menu-container disabled-menu" id="saveAsMenu">
+                        <i>📋</i> 
+                        <span style="flex: 1;">다른 이름으로 저장(A)</span>
+                        <span>▶</span>
+                        <!-- 하위 메뉴 컨텐츠 -->
+                        <div class="sub-menu-content">
+                            <div class="sub-menu-item format-btn" data-format="image/png">
+                                <div>
+                                    <strong>PNG 그림</strong>
+                                    <div style="font-size: 11px; color: #666;">고품질로 저장하며 컴퓨터나 웹에 사용합니다.</div>
+                                </div>
+                            </div>
+                            <div class="sub-menu-item format-btn" data-format="image/jpeg">
+                                <div>
+                                    <strong>JPEG 그림</strong>
+                                    <div style="font-size: 11px; color: #666;">품질이 우수하여 컴퓨터, 이메일 또는 웹에 사용합니다.</div>
+                                </div>
+                            </div>
+                            <div class="sub-menu-item format-btn" data-format="image/bmp">
+                                <div>
+                                    <strong>BMP 그림</strong>
+                                    <div style="font-size: 11px; color: #666;">모든 종류의 그림을 고품질로 저장합니다.</div>
+                                </div>
+                            </div>
+                            <div class="sub-menu-item format-btn" data-format="image/gif">
+                                <div>
+                                    <strong>GIF 그림</strong>
+                                    <div style="font-size: 11px; color: #666;">간단한 그림에 사용하며 품질이 떨어집니다.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="border-top: 1px solid #ccc; margin: 5px 0;"></div>
+                    <div class="dropdown-item">
+                        <i>🖨️</i> 인쇄(P)...
+                    </div>
+                </div>
+            </div>
+            <div class="menu-item">편집(E)</div>
+            <div class="menu-item">보기(V)</div>
+        </div>
+
+        <!-- 가짜 툴바 -->
+        <div class="toolbar">
+            <div class="tool-group" style="flex-direction: column; align-items: center;">
+                <div class="tool-btn" title="붙여넣기">📋</div>
+                <span style="font-size: 10px;">클립보드</span>
+            </div>
+            
+            <div class="tool-group">
+                <div style="display: flex; flex-direction: column; align-items: center; margin-right: 5px;">
+                    <div class="tool-btn" style="width: 40px; height: 40px; border: 1px dashed #999;">🖼️</div>
+                    <span style="font-size: 10px;">선택</span>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2px;">
+                    <div class="tool-btn" style="font-size: 12px;" title="자르기">✂️</div>
+                    <div class="tool-btn" style="font-size: 12px;" title="크기 조정">📏</div>
+                    <div class="tool-btn" style="font-size: 12px;" title="회전">🔄</div>
+                </div>
+            </div>
+
+            <div class="tool-group" style="display: grid; grid-template-columns: repeat(3, 1fr);">
+                <div class="tool-btn">✏️</div>
+                <div class="tool-btn">🪣</div>
+                <div class="tool-btn">A</div>
+                <div class="tool-btn">🖌️</div>
+                <div class="tool-btn">🔍</div>
+                <div class="tool-btn">💧</div>
+            </div>
+
+            <!-- 가짜 색상 팔레트 -->
+            <div class="tool-group" style="flex-direction: column; justify-content: center;">
+                <div class="color-palette">
+                    <div class="color-box" style="background-color: #000;"></div>
+                    <div class="color-box" style="background-color: #7f7f7f;"></div>
+                    <div class="color-box" style="background-color: #880015;"></div>
+                    <div class="color-box" style="background-color: #ed1c24;"></div>
+                    <div class="color-box" style="background-color: #ff7f27;"></div>
+                    <div class="color-box" style="background-color: #fff200;"></div>
+                    <div class="color-box" style="background-color: #22b14c;"></div>
+                    <div class="color-box" style="background-color: #00a2e8;"></div>
+                    <div class="color-box" style="background-color: #3f48cc;"></div>
+                    <div class="color-box" style="background-color: #a349a4;"></div>
+                    <!-- 두 번째 줄 -->
+                    <div class="color-box" style="background-color: #fff;"></div>
+                    <div class="color-box" style="background-color: #c3c3c3;"></div>
+                    <div class="color-box" style="background-color: #b97a57;"></div>
+                    <div class="color-box" style="background-color: #ffaec9;"></div>
+                    <div class="color-box" style="background-color: #ffc90e;"></div>
+                    <div class="color-box" style="background-color: #efe4b0;"></div>
+                    <div class="color-box" style="background-color: #b5e61d;"></div>
+                    <div class="color-box" style="background-color: #99d9ea;"></div>
+                    <div class="color-box" style="background-color: #7092be;"></div>
+                    <div class="color-box" style="background-color: #c8bfe7;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 작업 영역 -->
+        <div class="workspace">
+            <div class="canvas-area" id="canvasArea">
+                <div id="welcomeText" class="text-gray-400 text-center" style="pointer-events: none;">
+                    <div style="margin-bottom: 10px;">[파일] - [열기]를 통해 사진을 불러오세요.</div>
+                </div>
+                <img id="previewImage" src="" alt="미리보기" class="hidden" style="max-width: 100%; max-height: 60vh; display: block;" />
+                
+                <!-- 리사이즈 핸들 (시각적 장식) -->
+                <div class="resize-handle" style="top: -3px; left: -3px; cursor: nwse-resize;"></div>
+                <div class="resize-handle" style="top: -3px; right: -3px; cursor: nesw-resize;"></div>
+                <div class="resize-handle" style="bottom: -3px; left: -3px; cursor: nesw-resize;"></div>
+                <div class="resize-handle" style="bottom: -3px; right: -3px; cursor: nwse-resize;"></div>
+                <div class="resize-handle" style="top: 50%; left: -3px; transform: translateY(-50%); cursor: ew-resize;"></div>
+                <div class="resize-handle" style="top: 50%; right: -3px; transform: translateY(-50%); cursor: ew-resize;"></div>
+                <div class="resize-handle" style="bottom: -3px; left: 50%; transform: translateX(-50%); cursor: ns-resize;"></div>
+                <div class="resize-handle" style="top: -3px; left: 50%; transform: translateX(-50%); cursor: ns-resize;"></div>
+            </div>
+        </div>
+
+        <!-- 상태 표시줄 -->
+        <div class="status-bar">
+            <div id="imageSizeInfo">크기: 0 x 0 픽셀</div>
+            <div>크기: <span id="currentFileSize">0 KB</span></div>
+        </div>
+    </div>
+
+    <!-- 설명 표 섹션 -->
+    <div class="info-section">
+        <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+            <span class="text-2xl">📝</span> 이미지 파일 형식의 특징
+        </h2>
+        <table>
+                <thead>
+                    <tr>
+                        <th>JPEG</th>
+                        <th>PNG</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <ul class="description-list">
+                                <li>1,670만 가지의 색상 표현이 가능하고, 압축 효율이 좋아 가장 많이 사용되는 형식</li>
+                                <li><span class="highlight-text">손실</span> 압축 방식이기 때문에 파일을 저장할 때마다 일부 데이터가 손실됨</li>
+                            </ul>
+                        </td>
+                        <td>
+                            <ul class="description-list">
+                                <li>1,670만 가지의 색상 표현이 가능</li>
+                                <li><span class="highlight-text">무손실</span> 압축 방식 (압축될 때 색상 정보를 유지)</li>
+                                <li><span class="highlight-text">투명한 효과</span> 가능</li>
+                            </ul>
+                        </td>
+                    </tr>
+                </tbody>
+                <thead>
+                    <tr>
+                        <th>GIF</th>
+                        <th>BMP</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <ul class="description-list">
+                                <li>투명한 효과와 <span class="highlight-text">애니메이션 효과</span>가 가능</li>
+                                <li>픽셀 당 최대 8비트를 저장할 수 있기 때문에 표현 가능한 색상이 <span class="highlight-text">256</span>가지로 제한됨</li>
+                                <li><span class="highlight-text">무손실</span> 압축 방식</li>
+                            </ul>
+                        </td>
+                        <td>
+                            <ul class="description-list">
+                                <li>윈도에서 기본적으로 지원하는 파일 형식으로 그림 파일 형식 중 가장 선명함</li>
+                                <li><span class="highlight-text">해상도</span>가 좋아 배경화면의 파일로 많이 사용</li>
+                                <li><span class="highlight-text">무손실</span> 압축 방식</li>
+                            </ul>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+    </div>
+
+    <!-- 결과 모달 창 -->
+    <div class="modal-overlay" id="resultModal">
+        <div class="modal-content">
+            <h3 class="text-lg font-bold mb-2 border-b pb-2">저장 완료 (시뮬레이션)</h3>
+            <div class="my-4 text-left">
+                <p class="mb-2 text-gray-700">선택한 형식: <strong id="modalFormat" class="text-blue-600"></strong></p>
+                <p class="text-gray-700">예상 파일 크기: <strong id="modalSize" class="text-red-500 text-xl"></strong> <strong>KB</strong></p>
+            </div>
+            <button id="closeModalBtn" class="w-full py-2 bg-blue-500 text-white rounded hover:bg-blue-600">확인</button>
+        </div>
+    </div>
+
+    <!-- 이미지 변환을 위한 숨겨진 캔버스 -->
+    <canvas id="hiddenCanvas"></canvas>
+
+    <script>
+        const fileMenuBtn = document.getElementById('fileMenuBtn');
+        const fileDropdown = document.getElementById('fileDropdown');
+        const imageInput = document.getElementById('imageInput');
+        const previewImage = document.getElementById('previewImage');
+        const welcomeText = document.getElementById('welcomeText');
+        const canvasArea = document.getElementById('canvasArea');
+        const saveAsMenu = document.getElementById('saveAsMenu');
+        const formatBtns = document.querySelectorAll('.format-btn');
+        const hiddenCanvas = document.getElementById('hiddenCanvas');
+        const ctx = hiddenCanvas.getContext('2d');
+        
+        // 상태 표시줄
+        const imageSizeInfo = document.getElementById('imageSizeInfo');
+        const currentFileSize = document.getElementById('currentFileSize');
+
+        // 모달 관련
+        const resultModal = document.getElementById('resultModal');
+        const modalFormat = document.getElementById('modalFormat');
+        const modalSize = document.getElementById('modalSize');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+
+        let currentImage = null;
+        let baseByteSize = 0;
+
+        // 1. 파일 메뉴 드롭다운 토글
+        fileMenuBtn.addEventListener('click', function(e) {
+            // 다른 영역 클릭 시 닫히는 기능과 충돌 방지
+            e.stopPropagation();
+            fileDropdown.classList.toggle('show');
+        });
+
+        // 바탕 클릭 시 드롭다운 닫기
+        window.addEventListener('click', function() {
+            if (fileDropdown.classList.contains('show')) {
+                fileDropdown.classList.remove('show');
+            }
+        });
+
+        // 2. 드롭다운 내부 클릭 시 메뉴 안 닫히게 (파일 선택 창 열 때)
+        fileDropdown.addEventListener('click', function(e) {
+            // 하위 메뉴 클릭 시에만 닫히도록 처리
+            if (!e.target.closest('.sub-menu-item')) {
+                e.stopPropagation();
+            }
+        });
+
+        // 3. 이미지 업로드 처리
+        imageInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // 파일 메뉴 닫기
+            fileDropdown.classList.remove('show');
+
+            const reader = new FileReader();
+            
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    // 미리보기 설정
+                    previewImage.src = img.src;
+                    previewImage.classList.remove('hidden');
+                    welcomeText.classList.add('hidden');
+                    canvasArea.classList.add('has-image'); // 리사이즈 핸들 보이기
+                    canvasArea.style.minWidth = 'auto';
+                    canvasArea.style.minHeight = 'auto';
+                    
+                    // 상태 표시줄 업데이트
+                    imageSizeInfo.textContent = `크기: ${img.width} x ${img.height} 픽셀`;
+                    currentFileSize.textContent = (file.size / 1024).toFixed(1) + ' KB';
+
+                    // 원본 이미지 저장 및 캔버스 설정
+                    currentImage = img;
+                    hiddenCanvas.width = img.width;
+                    hiddenCanvas.height = img.height;
+                    
+                    // 다른 이름으로 저장 메뉴 활성화
+                    saveAsMenu.classList.remove('disabled-menu');
+
+                    // 기준 크기 계산 (BMP 무손실 비압축 기준)
+                    baseByteSize = (img.width * img.height * 3) + 54;
+                };
+                img.src = event.target.result;
+            };
+            
+            reader.readAsDataURL(file);
+        });
+
+        // 4. 각 포맷 버튼 클릭 이벤트 (다른 이름으로 저장)
+        formatBtns.forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                // 이미지가 없으면 동작 안함 (방어 코드)
+                if (!currentImage) return;
+                
+                // 메뉴 닫기
+                fileDropdown.classList.remove('show');
+
+                const mimeType = this.getAttribute('data-format');
+                const formatName = this.querySelector('strong').textContent.replace(' 그림', '');
+                let kbSize = 0;
+
+                // 교육 목적을 위해 각 포맷의 특징을 반영하여 크기 비율 강제 조정
+                if(mimeType === 'image/jpeg') {
+                    kbSize = (baseByteSize * 0.08 / 1024).toFixed(1); // 약 8%
+                } else if(mimeType === 'image/png') {
+                    kbSize = (baseByteSize * 0.5 / 1024).toFixed(1);  // 약 50%
+                } else if(mimeType === 'image/gif') {
+                    kbSize = (baseByteSize * 0.12 / 1024).toFixed(1); // 약 12%
+                } else if(mimeType === 'image/bmp') {
+                    kbSize = (baseByteSize / 1024).toFixed(1);        // 100%
+                }
+
+                // 모달 띄우기
+                modalFormat.textContent = formatName;
+                modalSize.textContent = kbSize;
+                resultModal.style.display = 'flex';
+            });
+        });
+
+        // 5. 모달 닫기
+        closeModalBtn.addEventListener('click', function() {
+            resultModal.style.display = 'none';
+        });
+    </script>
+</body>
+</html>
