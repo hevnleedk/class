@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3갤런 5갤런 물통 미션 & 문제 이해 학습</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .water-wave {
+            transition: height 0.4s ease-in-out;
+        }
+        .jug-container {
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .jug-container:hover {
+            transform: translateY(-4px);
+        }
+        .jug-selected {
+            ring: 4px solid #3b82f6;
+            transform: translateY(-6px);
+        }
+        @keyframes pourAnim {
+            0% { opacity: 0; transform: translateY(-10px); }
+            50% { opacity: 1; }
+            100% { opacity: 0; transform: translateY(20px); }
+        }
+        .pour-effect {
+            animation: pourAnim 0.6s infinite;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 font-sans pb-12">
+
+    <!-- 상단 헤더 -->
+    <header class="bg-indigo-600 text-white py-5 shadow-md">
+        <div class="max-w-5xl mx-auto px-4 text-center">
+            <span class="bg-indigo-500 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">컴퓨팅 사고력 - 활동 1</span>
+            <h1 class="text-2xl sm:text-3xl font-extrabold mt-1">💧 물통 미션 & 문제 이해 퀴즈</h1>
+            <p class="text-indigo-100 mt-1 text-sm">물통을 직접 클릭해서 4갤런을 만들고, 오른쪽 빈칸 퀴즈를 풀며 학습지를 완성하세요!</p>
+        </div>
+    </header>
+
+    <div class="max-w-6xl mx-auto px-4 mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- 왼쪽: 실전 터치/클릭 물통 게임 (7 컬럼) -->
+        <main class="lg:col-span-7 space-y-4">
+
+            <!-- 상태바 & 타이머 -->
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center">
+                <div>
+                    <span class="text-xs font-semibold text-slate-400 block">제한 시간</span>
+                    <span id="timer" class="text-2xl font-black text-indigo-600">05:00</span>
+                </div>
+                <div class="text-center">
+                    <span class="text-xs font-semibold text-slate-400 block">목표 수량</span>
+                    <span class="text-lg font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">🎯 4갤런 만들기</span>
+                </div>
+                <button onclick="resetGame()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold px-3 py-2 rounded-lg transition">
+                    🔄 초기화
+                </button>
+            </div>
+
+            <!-- 시뮬레이션 인터랙션 구역 -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col items-center relative">
+                
+                <!-- 수도꼭지 (물 가득 채우기 조작용) -->
+                <div class="flex justify-around w-full max-w-sm mb-2">
+                    <button onclick="fillJug(3)" class="bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold py-1.5 px-3 rounded-t-lg shadow flex items-center gap-1 transition">
+                        🚰 3갤런 가득 채우기
+                    </button>
+                    <button onclick="fillJug(5)" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1.5 px-3 rounded-t-lg shadow flex items-center gap-1 transition">
+                        🚰 5갤런 가득 채우기
+                    </button>
+                </div>
+
+                <!-- 물통 비주얼 영역 -->
+                <div class="flex justify-around items-end w-full max-w-md h-64 border-b-8 border-slate-700 pb-1 relative bg-gradient-to-b from-sky-50 to-slate-50 rounded-t-xl px-4">
+                    
+                    <!-- 3갤런 물통 (클릭 이벤트) -->
+                    <div onclick="clickJug(3)" class="jug-container flex flex-col items-center group relative">
+                        <span class="text-xs font-bold text-blue-600 mb-1 opacity-0 group-hover:opacity-100 transition">클릭하여 옮기기 ➡️</span>
+                        <div id="jug3Box" class="relative w-24 h-36 border-4 border-slate-800 border-t-0 rounded-b-2xl overflow-hidden bg-white/80 shadow-md">
+                            <!-- 물 수위 -->
+                            <div id="jug3Water" class="bg-sky-400 w-full water-wave absolute bottom-0" style="height: 0%;"></div>
+                            <!-- 눈금 -->
+                            <div class="absolute inset-0 flex flex-col justify-between py-2 text-[10px] text-slate-400 font-mono pointer-events-none pl-1">
+                                <div class="border-b border-dashed border-slate-300">3Gal</div>
+                                <div class="border-b border-dashed border-slate-300">2Gal</div>
+                                <div class="border-b border-dashed border-slate-300">1Gal</div>
+                            </div>
+                        </div>
+                        <span class="mt-2 text-sm font-extrabold text-slate-700">3갤런 물통</span>
+                        <span id="text3" class="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded mt-0.5">0 / 3 Gal</span>
+                    </div>
+
+                    <!-- 중앙 안내 어시스트 -->
+                    <div class="flex flex-col items-center justify-center space-y-2 pb-8">
+                        <button onclick="transfer3to5()" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 font-bold text-xs py-1.5 px-2.5 rounded-lg border border-indigo-300 shadow-sm transition">
+                            3Gal ➔ 5Gal 
+                        </button>
+                        <button onclick="transfer5to3()" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 font-bold text-xs py-1.5 px-2.5 rounded-lg border border-indigo-300 shadow-sm transition">
+                            3Gal ⬅️ 5Gal
+                        </button>
+                    </div>
+
+                    <!-- 5갤런 물통 (클릭 이벤트) -->
+                    <div onclick="clickJug(5)" class="jug-container flex flex-col items-center group relative">
+                        <span class="text-xs font-bold text-blue-600 mb-1 opacity-0 group-hover:opacity-100 transition">⬅️ 클릭하여 옮기기</span>
+                        <div id="jug5Box" class="relative w-28 h-52 border-4 border-slate-800 border-t-0 rounded-b-2xl overflow-hidden bg-white/80 shadow-md">
+                            <!-- 물 수위 -->
+                            <div id="jug5Water" class="bg-blue-500 w-full water-wave absolute bottom-0" style="height: 0%;"></div>
+                            <!-- 눈금 -->
+                            <div class="absolute inset-0 flex flex-col justify-between py-2 text-[10px] text-slate-400 font-mono pointer-events-none pl-1">
+                                <div class="border-b border-dashed border-slate-300">5Gal</div>
+                                <div class="border-b border-dashed border-slate-300">4Gal</div>
+                                <div class="border-b border-dashed border-slate-300">3Gal</div>
+                                <div class="border-b border-dashed border-slate-300">2Gal</div>
+                                <div class="border-b border-dashed border-slate-300">1Gal</div>
+                            </div>
+                        </div>
+                        <span class="mt-2 text-sm font-extrabold text-slate-700">5갤런 물통</span>
+                        <span id="text5" class="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded mt-0.5">0 / 5 Gal</span>
+                    </div>
+
+                </div>
+
+                <!-- 하수구 (물통 비우기 조작용) -->
+                <div class="flex justify-around w-full max-w-sm mt-3">
+                    <button onclick="emptyJug(3)" class="bg-slate-200 hover:bg-rose-100 text-slate-600 hover:text-rose-600 text-xs font-semibold py-1 px-3 rounded-b-lg border border-slate-300 transition">
+                        🗑️ 3갤런 비우기
+                    </button>
+                    <button onclick="emptyJug(5)" class="bg-slate-200 hover:bg-rose-100 text-slate-600 hover:text-rose-600 text-xs font-semibold py-1 px-3 rounded-b-lg border border-slate-300 transition">
+                        🗑️ 5갤런 비우기
+                    </button>
+                </div>
+
+                <!-- 상황 안내 안내판 -->
+                <div id="gameMessage" class="mt-5 p-3 bg-indigo-50 border border-indigo-200 rounded-xl text-indigo-900 text-xs sm:text-sm w-full max-w-md text-center font-semibold shadow-inner">
+                    💡 물통을 직접 클릭하거나 상단/하단 버튼을 이용해 4갤런을 만들어보세요!
+                </div>
+
+            </div>
+
+            <!-- 힌트 접이식 -->
+            <details class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm cursor-pointer">
+                <summary class="font-bold text-slate-700 text-sm flex items-center justify-between">
+                    <span>💡 4갤런 만드는 방법이 막혔나요? (힌트 보기)</span>
+                    <span class="text-xs text-indigo-600 font-normal">열기/닫기</span>
+                </summary>
+                <ol class="text-xs text-slate-600 mt-3 space-y-1.5 list-decimal list-inside pl-1 border-t pt-2 leading-relaxed">
+                    <li><strong>5갤런 물통</strong>을 가득 채웁니다.</li>
+                    <li>5갤런에서 <strong>3갤런 물통</strong>으로 물을 쏟아 채웁니다. (5갤런에 <span class="text-blue-600 font-bold">2갤런</span> 남음)</li>
+                    <li><strong>3갤런 물통</strong>을 모두 비웁니다.</li>
+                    <li>5갤런에 있던 2갤런을 <strong>3갤런 물통</strong>으로 옮겨 담습니다.</li>
+                    <li><strong>5갤런 물통</strong>을 다시 가득 채웁니다.</li>
+                    <li>5갤런의 물을 3갤런 물통이 가득 찰 때까지(1갤런 들어감) 옮깁니다.</li>
+                    <li>🎉 5갤런 물통에 정확히 <span class="text-red-500 font-bold">4갤런</span>이 남습니다!</li>
+                </ol>
+            </details>
+
+        </main>
+
+        <!-- 오른쪽: 학습지 빈칸 채우기 퀴즈 (5 컬럼) -->
+        <aside class="lg:col-span-5 space-y-4">
+            <div class="bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 shadow-sm">
+                
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-base font-extrabold text-amber-900 flex items-center gap-1.5">
+                        ✏️ [활동] 문제 이해 빈칸 퀴즈
+                    </h2>
+                    <span id="quizScore" class="bg-amber-200 text-amber-900 text-xs font-black px-2.5 py-1 rounded-full">
+                        달성도: 0 / 4
+                    </span>
+                </div>
+                <p class="text-xs text-amber-800 mb-4 leading-relaxed">
+                    알맞은 단어를 선택하여 빈칸을 완성하세요! 정답을 맞추면 학습지에 채워 넣을 <strong class="text-emerald-600">정답</strong>이 공개됩니다.
+                </p>
+
+                <form id="quizForm" class="space-y-3">
+                    
+                    <!-- 퀴즈 1번 -->
+                    <div class="bg-white p-3 rounded-xl border border-amber-200 shadow-sm space-y-1.5">
+                        <label class="text-xs font-bold text-slate-700 block">
+                            1) 문제에서 해결하고자 하는 것은 무엇인가?
+                        </label>
+                        <div class="text-xs leading-relaxed text-slate-600">
+                            정해진 시간 안에 
+                            <select id="q1" onchange="checkQuiz()" class="bg-amber-100/70 border border-amber-300 rounded px-1.5 py-1 font-bold text-amber-900 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                                <option value="">(선택)</option>
+                                <option value="3갤런">3갤런</option>
+                                <option value="4갤런">4갤런</option>
+                                <option value="5갤런">5갤런</option>
+                            </select>의 물을 만들어 저울에 올려놓는다.
+                        </div>
+                    </div>
+
+                    <!-- 퀴즈 2번 -->
+                    <div class="bg-white p-3 rounded-xl border border-amber-200 shadow-sm space-y-2">
+                        <label class="text-xs font-bold text-slate-700 block">
+                            2) 문제의 현재 상태와 목표 상태는 무엇인가?
+                        </label>
+                        <div class="text-xs text-slate-600 space-y-1">
+                            <div>• 현재 상태: 
+                                <select id="q2_1" onchange="checkQuiz()" class="bg-amber-100/70 border border-amber-300 rounded px-1.5 py-0.5 font-bold text-amber-900 focus:outline-none">
+                                    <option value="">(선택)</option>
+                                    <option value="3갤런 물통과 5갤런 물통">3갤런 물통과 5갤런 물통</option>
+                                    <option value="4갤런 물통 1개">4갤런 물통 1개</option>
+                                </select>이 있는 상태
+                            </div>
+                            <div>• 목표 상태: 
+                                <select id="q2_2" onchange="checkQuiz()" class="bg-amber-100/70 border border-amber-300 rounded px-1.5 py-0.5 font-bold text-amber-900 focus:outline-none">
+                                    <option value="">(선택)</option>
+                                    <option value="2갤런">2갤런</option>
+                                    <option value="4갤런">4갤런</option>
+                                </select>의 물을 만든 상태
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 퀴즈 3번 -->
+                    <div class="bg-white p-3 rounded-xl border border-amber-200 shadow-sm space-y-2">
+                        <label class="text-xs font-bold text-slate-700 block">
+                            3) 문제에서 주어진 데이터나 조건은 무엇인가?
+                        </label>
+                        <div class="text-xs text-slate-600 space-y-1">
+                            <div>• 데이터: 3갤런 물통 1개, 
+                                <select id="q3_1" onchange="checkQuiz()" class="bg-amber-100/70 border border-amber-300 rounded px-1.5 py-0.5 font-bold text-amber-900 focus:outline-none">
+                                    <option value="">(선택)</option>
+                                    <option value="4갤런">4갤런</option>
+                                    <option value="5갤런">5갤런</option>
+                                </select> 물통 1개
+                            </div>
+                            <div>• 조건: 제한 시간(
+                                <select id="q3_2" onchange="checkQuiz()" class="bg-amber-100/70 border border-amber-300 rounded px-1.5 py-0.5 font-bold text-amber-900 focus:outline-none">
+                                    <option value="">(선택)</option>
+                                    <option value="3분">3분</option>
+                                    <option value="5분">5분</option>
+                                    <option value="10분">10분</option>
+                                </select>) 안에 수행해야 한다.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 퀴즈 4번 -->
+                    <div class="bg-white p-3 rounded-xl border border-amber-200 shadow-sm space-y-1.5">
+                        <label class="text-xs font-bold text-slate-700 block">
+                            4) 문제를 해결하기 위해 필요한 정보는 무엇인가?
+                        </label>
+                        <div class="text-xs leading-relaxed text-slate-600">
+                            3갤런 물통 1개와 5갤런 물통 1개만으로 
+                            <select id="q4" onchange="checkQuiz()" class="bg-amber-100/70 border border-amber-300 rounded px-1.5 py-1 font-bold text-amber-900 focus:outline-none">
+                                <option value="">(선택)</option>
+                                <option value="4갤런의 물을 만드는 방법">4갤런의 물을 만드는 방법</option>
+                                <option value="저울의 무게를 재는 방법">저울의 무게를 재는 방법</option>
+                            </select>
+                        </div>
+                    </div>
+
+                </form>
+
+            </div>
+        </aside>
+
+    </div>
+
+    <!-- 미션 완료 팝업 모달 -->
+    <div id="successModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-2xl space-y-4">
+            <div class="text-5xl">🏆</div>
+            <h3 class="text-xl font-extrabold text-slate-800">실험 성공! 4갤런 완성!</h3>
+            <p class="text-slate-600 text-xs leading-relaxed">
+                축하합니다! 5갤런 물통에 정확히 <strong>4갤런의 물</strong>을 채웠습니다.
+            </p>
+            <div class="bg-amber-50 p-3 rounded-xl text-left text-xs space-y-1 text-amber-900 border border-amber-200">
+                <p class="font-bold">📝 학습지에 정답을 옮겨 적으세요!</p>
+                <p>오른쪽 빈칸 퀴즈를 완성하고 나온 <strong class="text-emerald-600">정답</strong>을 학습지에 기입해 주면 됩니다.</p>
+            </div>
+            <button onclick="closeModal()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl text-sm transition shadow-lg">
+                확인 및 퀴즈 계속하기
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // 물통 수치
+        let jug3 = 0;
+        let jug5 = 0;
+        let timeLeft = 300;
+        let timerInterval = null;
+
+        // 선택 상태 (직접 클릭으로 물 옮기기)
+        let selectedJug = null;
+
+        // 정답 테이블
+        const answers = {
+            q1: "4갤런",
+            q2_1: "3갤런 물통과 5갤런 물통",
+            q2_2: "4갤런",
+            q3_1: "5갤런",
+            q3_2: "5분",
+            q4: "4갤런의 물을 만드는 방법"
+        };
+
+        // 타이머 시작
+        function startTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (timeLeft > 0) {
+                    timeLeft--;
+                    const m = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+                    const s = (timeLeft % 60).toString().padStart(2, '0');
+                    document.getElementById('timer').innerText = `${m}:${s}`;
+                } else {
+                    clearInterval(timerInterval);
+                    const msgEl = document.getElementById('gameMessage');
+                    msgEl.innerText = '⏰ 제한 시간(5분)이 초과되었습니다! 다시 시작해 보세요.';
+                    msgEl.className = "mt-5 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs sm:text-sm w-full max-w-md text-center font-semibold";
+                }
+            }, 1000);
+        }
+
+        // 물통 클릭 핸들러 (물 옮기기)
+        function clickJug(capacity) {
+            if (selectedJug === null) {
+                // 첫 번째 물통 선택
+                selectedJug = capacity;
+                highlightSelectedJug();
+                const msg = capacity === 3 ? "3갤런 물통이 선택되었습니다. 5갤런 물통을 클릭하면 물을 옮깁니다!" : "5갤런 물통이 선택되었습니다. 3갤런 물통을 클릭하면 물을 옮깁니다!";
+                setGameMessage(msg);
+            } else if (selectedJug === capacity) {
+                // 같은 물통 클릭 시 선택 해제
+                selectedJug = null;
+                highlightSelectedJug();
+                setGameMessage("선택이 취소되었습니다.");
+            } else {
+                // 다른 물통 클릭 시 물 이동
+                if (selectedJug === 3 && capacity === 5) {
+                    transfer3to5();
+                } else if (selectedJug === 5 && capacity === 3) {
+                    transfer5to3();
+                }
+                selectedJug = null;
+                highlightSelectedJug();
+            }
+        }
+
+        function highlightSelectedJug() {
+            const b3 = document.getElementById('jug3Box');
+            const b5 = document.getElementById('jug5Box');
+            b3.classList.remove('ring-4', 'ring-blue-500');
+            b5.classList.remove('ring-4', 'ring-blue-500');
+
+            if (selectedJug === 3) b3.classList.add('ring-4', 'ring-blue-500');
+            if (selectedJug === 5) b5.classList.add('ring-4', 'ring-blue-500');
+        }
+
+        function setGameMessage(msg) {
+            document.getElementById('gameMessage').innerText = msg;
+        }
+
+        // 물통 연산
+        function fillJug(cap) {
+            if (cap === 3) jug3 = 3;
+            if (cap === 5) jug5 = 5;
+            setGameMessage(`${cap}갤런 물통에 물을 가득 채웠습니다.`);
+            updateUI();
+        }
+
+        function emptyJug(cap) {
+            if (cap === 3) jug3 = 0;
+            if (cap === 5) jug5 = 0;
+            setGameMessage(`${cap}갤런 물통의 물을 비웠습니다.`);
+            updateUI();
+        }
+
+        function transfer3to5() {
+            if (jug3 === 0) {
+                setGameMessage("3갤런 물통에 물이 없어 옮길 수 없습니다.");
+                return;
+            }
+            const space = 5 - jug5;
+            if (space === 0) {
+                setGameMessage("5갤런 물통이 이미 가득 차 있습니다.");
+                return;
+            }
+            const move = Math.min(jug3, space);
+            jug3 -= move;
+            jug5 += move;
+            setGameMessage(`3갤런에서 5갤런으로 ${move}갤런을 옮겼습니다.`);
+            updateUI();
+        }
+
+        function transfer5to3() {
+            if (jug5 === 0) {
+                setGameMessage("5갤런 물통에 물이 없어 옮길 수 없습니다.");
+                return;
+            }
+            const space = 3 - jug3;
+            if (space === 0) {
+                setGameMessage("3갤런 물통이 이미 가득 차 있습니다.");
+                return;
+            }
+            const move = Math.min(jug5, space);
+            jug5 -= move;
+            jug3 += move;
+            setGameMessage(`5갤런에서 3갤런으로 ${move}갤런을 옮겼습니다.`);
+            updateUI();
+        }
+
+        // 화면 업데이트
+        function updateUI() {
+            document.getElementById('jug3Water').style.height = `${(jug3 / 3) * 100}%`;
+            document.getElementById('jug5Water').style.height = `${(jug5 / 5) * 100}%`;
+
+            document.getElementById('text3').innerText = `${jug3} / 3 Gal`;
+            document.getElementById('text5').innerText = `${jug5} / 5 Gal`;
+
+            // 4갤런 도달 체크
+            if (jug5 === 4) {
+                setTimeout(() => {
+                    document.getElementById('successModal').classList.remove('hidden');
+                }, 300);
+            }
+        }
+
+        function resetGame() {
+            jug3 = 0;
+            jug5 = 0;
+            timeLeft = 300;
+            selectedJug = null;
+            highlightSelectedJug();
+            setGameMessage("💧 물통 상태가 초기화되었습니다.");
+            startTimer();
+            updateUI();
+        }
+
+        function closeModal() {
+            document.getElementById('successModal').classList.add('hidden');
+        }
+
+        // 빈칸 퀴즈 실시간 채점 및 스타일 변경
+        function checkQuiz() {
+            let correctCount = 0;
+            const keys = Object.keys(answers);
+
+            keys.forEach(id => {
+                const selectEl = document.getElementById(id);
+                const userVal = selectEl.value;
+
+                if (userVal === answers[id]) {
+                    correctCount++;
+                    // 정답: 초록색 강조
+                    selectEl.className = "bg-emerald-50 border-2 border-emerald-500 font-extrabold text-emerald-700 rounded px-1.5 py-0.5 focus:outline-none transition-colors";
+                } else if (userVal !== "") {
+                    // 오답: 빨간색 경고
+                    selectEl.className = "bg-rose-100 border-2 border-red-400 font-bold text-red-600 rounded px-1.5 py-0.5 focus:outline-none";
+                } else {
+                    // 미선택: 기본 상태
+                    selectEl.className = "bg-amber-100/70 border border-amber-300 rounded px-1.5 py-0.5 font-bold text-amber-900 focus:outline-none";
+                }
+            });
+
+            // 점수 업데이트 (질문 문항 4개 기준 계산)
+            let scoreProgress = 0;
+            if (document.getElementById('q1').value === answers.q1) scoreProgress++;
+            if (document.getElementById('q2_1').value === answers.q2_1 && document.getElementById('q2_2').value === answers.q2_2) scoreProgress++;
+            if (document.getElementById('q3_1').value === answers.q3_1 && document.getElementById('q3_2').value === answers.q3_2) scoreProgress++;
+            if (document.getElementById('q4').value === answers.q4) scoreProgress++;
+
+            const scoreEl = document.getElementById('quizScore');
+            scoreEl.innerText = `달성도: ${scoreProgress} / 4`;
+
+            if (scoreProgress === 4) {
+                scoreEl.className = "bg-emerald-500 text-white text-xs font-black px-2.5 py-1 rounded-full animate-bounce";
+                scoreEl.innerText = "🎉 학습지 답안 완성!";
+            } else {
+                scoreEl.className = "bg-amber-200 text-amber-900 text-xs font-black px-2.5 py-1 rounded-full";
+            }
+        }
+
+        window.onload = function() {
+            startTimer();
+            updateUI();
+        };
+    </script>
+</body>
+</html>
