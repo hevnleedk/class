@@ -2,8 +2,8 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>이천 지도 & 가족관계도로 배우는 그래프와 트리</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>노드 & 간선 실습 & 개념 빈칸 퀴즈</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -11,6 +11,7 @@
         body {
             font-family: 'Noto Sans KR', sans-serif;
             background-color: #f8fafc;
+            touch-action: manipulation;
         }
         ::-webkit-scrollbar {
             width: 6px;
@@ -25,166 +26,125 @@
         }
         .canvas-container {
             user-select: none;
+            -webkit-user-select: none;
             touch-action: none;
         }
         @keyframes cycleGlow {
-            0%, 100% { stroke: #8b5cf6; stroke-width: 5; stroke-dasharray: 8 4; }
-            50% { stroke: #a855f7; stroke-width: 7; stroke-dasharray: 0; filter: drop-shadow(0 0 6px rgba(168, 85, 247, 0.7)); }
+            0%, 100% { stroke: #a855f7; stroke-width: 6; stroke-dasharray: 8 4; }
+            50% { stroke: #c084fc; stroke-width: 8; stroke-dasharray: 0; filter: drop-shadow(0 0 6px rgba(168, 85, 247, 0.8)); }
         }
         .cycle-edge {
             animation: cycleGlow 1.8s infinite ease-in-out;
         }
-        /* Glassmorphism Floating Toolbar */
         .glass-panel {
-            background: rgba(255, 255, 255, 0.92);
+            background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(8px);
             border: 1px solid rgba(226, 232, 240, 0.9);
         }
+        svg circle, svg text, svg line {
+            touch-action: none;
+        }
     </style>
 </head>
-<body class="min-h-screen text-slate-800 flex flex-col justify-between">
+<body class="min-h-screen text-slate-800 flex flex-col justify-between select-none">
 
     <!-- Top Header -->
-    <header class="bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700 text-white py-4 px-4 shadow-md text-center relative overflow-hidden">
+    <header class="bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700 text-white py-3.5 px-4 shadow-md text-center relative overflow-hidden">
         <div class="max-w-7xl mx-auto relative z-10 flex flex-col items-center">
             <span class="inline-block bg-white/20 backdrop-blur-md px-3 py-0.5 rounded-full text-xs font-bold tracking-wide mb-1 border border-white/30">
                 컴퓨팅 사고력 - 활동 2
             </span>
-            <h1 class="text-2xl sm:text-3xl font-extrabold flex items-center justify-center gap-2">
-                <span>💧</span> 노드 & 간선 실습 미션 & 개념 빈칸 퀴즈
+            <h1 class="text-xl sm:text-2xl font-black flex items-center justify-center gap-2">
+                <span>💧</span> 노드 & 간선 실습 & 개념 빈칸 퀴즈
             </h1>
-            <p class="text-indigo-100 text-xs sm:text-sm mt-1 font-medium">
-                <strong>이천시 지도</strong>와 <strong>가족관계도</strong>를 직접 노드와 간선으로 그려보며 그래프와 트리를 완성해보세요!
+            <p class="text-indigo-100 text-xs sm:text-sm mt-0.5 font-medium">
+                터치나 마우스로 <strong>노드</strong>와 <strong>간선</strong>을 그리며 <strong>그래프</strong>와 <strong>트리</strong> 구조를 자유롭게 만들어보세요!
             </p>
         </div>
     </header>
 
     <!-- Main Content Container -->
-    <main class="max-w-7xl mx-auto w-full p-3 sm:p-6 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5">
+    <main class="max-w-7xl mx-auto w-full p-3 sm:p-5 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5">
 
-        <!-- LEFT COLUMN: Interactive Canvas & Mission Guide (7 cols on LG) -->
-        <section class="lg:col-span-7 flex flex-col gap-3.5">
+        <!-- LEFT COLUMN: Interactive Sandbox Canvas (7 cols on LG) -->
+        <section class="lg:col-span-7 flex flex-col gap-3">
 
-            <!-- Mission Tabs -->
-            <div class="bg-white rounded-2xl p-2 shadow-2xs border border-slate-200 flex items-center gap-1.5 overflow-x-auto">
-                <button id="tabMission1" class="tab-btn px-3 py-2 rounded-xl text-xs sm:text-sm font-extrabold flex items-center gap-1.5 transition whitespace-nowrap bg-indigo-600 text-white shadow-xs">
-                    🗺️ [미션 1] 이천시 지도 (그래프)
-                </button>
-                <button id="tabMission2" class="tab-btn px-3 py-2 rounded-xl text-xs sm:text-sm font-extrabold flex items-center gap-1.5 transition whitespace-nowrap bg-slate-100 text-slate-600 hover:bg-slate-200">
-                    👨‍👩‍👧‍👦 [미션 2] 가족관계도 (트리)
-                </button>
-                <button id="tabFree" class="tab-btn px-3 py-2 rounded-xl text-xs sm:text-sm font-extrabold flex items-center gap-1.5 transition whitespace-nowrap bg-slate-100 text-slate-600 hover:bg-slate-200">
-                    🎨 [자유 모드] 샌드박스
-                </button>
-            </div>
-
-            <!-- Mission Reference Card & Target Guide -->
-            <div id="missionPromptCard" class="bg-indigo-50/90 rounded-2xl p-3.5 border border-indigo-200 shadow-2xs flex flex-col sm:flex-row items-center gap-3.5">
-                <div id="missionGraphic" class="w-28 h-28 sm:w-32 sm:h-32 bg-white rounded-xl border border-indigo-200 p-2 flex-shrink-0 flex items-center justify-center text-center shadow-2xs overflow-hidden">
-                    <!-- Dynamic Graphic Rendering -->
-                </div>
-                <div class="flex-1 flex flex-col justify-center text-center sm:text-left">
-                    <div class="flex items-center justify-center sm:justify-start gap-2 mb-1">
-                        <span id="missionBadge" class="bg-indigo-600 text-white text-xs px-2.5 py-0.5 rounded-full font-bold">
-                            미션 1
-                        </span>
-                        <h3 id="missionTitle" class="text-sm sm:text-base font-extrabold text-indigo-950">
-                            이천 지도 지역 간 도로망 연결하기
-                        </h3>
-                    </div>
-                    <p id="missionDesc" class="text-xs text-slate-700 leading-relaxed font-medium">
-                        지도처럼 되돌아오는 길이 있는 구조를 <strong>그래프</strong>라고 합니다. <strong>이천시내(A), 부발(B), 학교(C), 장호원(D)</strong>을 도로선으로 이어 사이클(순환 경로)을 만들어보세요!
+            <!-- Intuitive Guide Header Bar -->
+            <div class="bg-white rounded-xl p-3 shadow-2xs border border-slate-200 flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                    <span class="bg-indigo-100 text-indigo-700 px-2 py-1 rounded-lg font-black text-xs">👆 간단 조작법</span>
+                    <p class="text-xs text-slate-700 font-bold flex items-center gap-2 flex-wrap">
+                        <span>• <strong class="text-emerald-600">허공 터치</strong>: 노드 생성</span>
+                        <span>• <strong class="text-indigo-600">노드 2개 연속 터치</strong>: 선 연결/해제</span>
+                        <span>• <strong class="text-amber-600">노드 드래그</strong>: 위치 이동</span>
                     </p>
-                    <div id="missionTargetGoal" class="mt-2 text-xs font-bold text-indigo-900 bg-white/90 p-1.5 rounded-lg border border-indigo-100 inline-flex items-center gap-1">
-                        🎯 성공 조건: 노드 4개 이상 연결 & 순환 경로(사이클) 포함하기
-                    </div>
+                </div>
+                <div id="nodeCountBadge" class="text-xs bg-indigo-50 text-indigo-700 font-extrabold px-2.5 py-1 rounded-lg border border-indigo-200">
+                    노드 0개 / 간선 0개
                 </div>
             </div>
 
-            <!-- Canvas Box with Integrated Floating Toolbar -->
+            <!-- Canvas Box -->
             <div class="bg-white rounded-2xl shadow-2xs border border-slate-200 p-3 flex flex-col gap-2 relative">
                 
-                <!-- Status & Mode Indicator Bar -->
-                <div id="canvasHelpText" class="text-xs text-indigo-900 bg-indigo-50/70 px-3 py-2 rounded-xl flex items-center justify-between border border-indigo-100">
+                <!-- Helper Status Bar -->
+                <div id="canvasHelpText" class="text-xs text-indigo-900 bg-indigo-50/90 px-3 py-2 rounded-xl flex items-center justify-between border border-indigo-100 font-medium">
                     <span class="font-bold flex items-center gap-1.5">
-                        <span id="helpIcon">🖊️</span> <span id="helpTextContent">노드 두 개를 차례대로 클릭하여 선(간선)을 이어보세요!</span>
+                        <span id="helpIcon">💡</span> <span id="helpTextContent">하얀 캔버스의 허공을 터치하여 첫 노드를 만들어보세요!</span>
                     </span>
-                    <span id="nodeCountBadge" class="text-xs bg-white text-indigo-700 font-extrabold px-2.5 py-1 rounded-lg border border-indigo-200 shadow-2xs">
-                        노드 0개 / 간선 0개
+                    <span id="selectedNodeBadge" class="hidden text-xs bg-amber-500 text-white font-extrabold px-2 py-0.5 rounded-md">
+                        노드 선택됨
                     </span>
                 </div>
 
-                <!-- Interactive SVG Canvas Area -->
-                <div class="relative w-full h-[340px] sm:h-[380px] bg-gradient-to-b from-slate-50 to-indigo-50/20 rounded-xl overflow-hidden border border-slate-200 canvas-container cursor-crosshair">
+                <!-- Drawing Canvas Area -->
+                <div class="relative w-full h-[380px] sm:h-[420px] bg-gradient-to-b from-slate-50 to-indigo-50/20 rounded-xl overflow-hidden border border-slate-200 canvas-container cursor-crosshair">
                     <svg id="graphSvg" class="w-full h-full">
                         <g id="edgesGroup"></g>
                         <g id="nodesGroup"></g>
                     </svg>
 
-                    <!-- FLOATING TOOLBAR (Directly Inside Canvas Area) -->
-                    <div class="absolute bottom-3 left-3 z-20 glass-panel p-1.5 rounded-2xl shadow-md flex items-center gap-1.5 border border-slate-200/80">
-                        <button id="floatConnectBtn" class="px-3 py-2 bg-indigo-600 text-white rounded-xl text-xs font-extrabold flex items-center gap-1.5 shadow-xs transition active:scale-95">
-                            <span>🖊️</span> 간선 연결
-                        </button>
-                        <button id="floatMoveBtn" class="px-3 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition active:scale-95">
-                            <span>✋</span> 노드 이동
-                        </button>
-                        <div class="w-px h-6 bg-slate-300 mx-0.5"></div>
-                        <button id="floatAddNodeBtn" class="px-2.5 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-xl text-xs font-bold flex items-center gap-1 transition border border-emerald-200">
+                    <!-- Quick Floating Action Buttons -->
+                    <div class="absolute bottom-3 right-3 z-20 glass-panel p-1.5 rounded-xl shadow-md flex items-center gap-1.5 border border-slate-200">
+                        <button id="floatAddNodeBtn" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-extrabold flex items-center gap-1 transition shadow-xs active:scale-95">
                             <span>➕</span> 노드 추가
                         </button>
-                        <button id="floatClearBtn" class="px-2.5 py-2 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-xl text-xs font-bold transition border border-rose-200">
+                        <button id="floatClearBtn" class="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-xs font-extrabold transition border border-rose-200 active:scale-95">
                             <span>🔄</span> 초기화
                         </button>
                     </div>
 
-                    <!-- Floating Action Button for Auto-Grading (Top Right inside Canvas) -->
-                    <div class="absolute top-3 right-3 z-20">
-                        <button id="gradeMissionBtn" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-md transition active:scale-95 flex items-center gap-1.5 border border-emerald-400">
-                            <span>🎯</span> 내 답안 채점하기
-                        </button>
-                    </div>
-
                     <!-- Cycle Information Overlay Badge -->
-                    <div id="cycleBadge" class="hidden absolute top-3 left-3 bg-purple-600/90 text-white text-xs font-extrabold px-3 py-1.5 rounded-full shadow-md flex items-center gap-1.5 animate-pulse">
-                        <span>🔄</span> 사이클(순환선) 연결됨! (보라색 점선)
+                    <div id="cycleBadge" class="hidden absolute top-3 left-3 bg-purple-600/95 text-white text-xs font-extrabold px-3 py-1.5 rounded-full shadow-md flex items-center gap-1.5 animate-pulse">
+                        <span>🔄</span> 사이클(순환선)이 발견되었습니다! (보라색 점선)
                     </div>
                 </div>
 
-                <!-- Real-Time Structure Analysis Box -->
+                <!-- Real-Time Graph vs Tree Evaluator Box -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
-                    <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex flex-col justify-between">
-                        <span class="text-xs text-slate-500 font-bold">실시간 구조 판단</span>
-                        <span id="structureType" class="text-xs sm:text-sm font-extrabold text-indigo-950 mt-1">
+                    <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 flex flex-col justify-between">
+                        <span class="text-xs text-slate-500 font-bold">실시간 구조 평가</span>
+                        <div id="structureType" class="text-sm font-extrabold text-indigo-950 mt-1">
                             노드를 추가해보세요
-                        </span>
+                        </div>
                     </div>
 
-                    <div id="cycleStatusCard" class="p-2.5 bg-purple-50/80 rounded-xl border border-purple-100 flex flex-col justify-between">
-                        <span class="text-xs text-purple-700 font-bold">사이클(순환 경로) 특징</span>
-                        <span id="cycleStatus" class="text-xs sm:text-sm font-extrabold text-purple-950 mt-1">
+                    <div id="cycleStatusCard" class="p-3 bg-purple-50/80 rounded-xl border border-purple-100 flex flex-col justify-between">
+                        <span class="text-xs text-purple-700 font-bold">사이클(순환 경로) 여부</span>
+                        <div id="cycleStatus" class="text-sm font-extrabold text-purple-950 mt-1">
                             없음
-                        </span>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Grading Result Feedback Box -->
-                <div id="gradingResultBox" class="hidden p-3 rounded-xl border text-xs sm:text-sm font-bold flex flex-col gap-1 transition-all">
-                    <div class="flex items-center justify-between">
-                        <span id="gradingTitle" class="text-sm font-extrabold flex items-center gap-1.5"></span>
-                        <button id="closeGradingBtn" class="text-xs bg-white/80 hover:bg-white px-2 py-0.5 rounded border border-slate-300">닫기</button>
-                    </div>
-                    <p id="gradingDetail" class="font-normal text-xs leading-relaxed text-slate-800"></p>
-                </div>
-
-                <!-- Positive Educational Core Concept Note -->
-                <div class="bg-indigo-50/80 rounded-xl p-3 border border-indigo-200 text-xs text-indigo-950 leading-relaxed flex items-start gap-2">
+                <!-- Educational Core Concept Note -->
+                <div class="bg-indigo-50/90 rounded-xl p-3 border border-indigo-200 text-xs text-indigo-950 leading-relaxed flex items-start gap-2">
                     <span class="text-base leading-none">💡</span>
                     <div>
-                        <strong>선생님의 핵심 설명! (꼭 읽어보세요)</strong><br>
-                        • <strong>사이클(Cycle)이란?</strong> 출발한 노드로 돌아오는 순환선입니다.<br>
-                        • <strong>그래프(Graph)</strong>: 사이클이 있어도 괜찮습니다! (이천 도로망, 지하철, SNS 등 자유로운 관계)<br>
-                        • <strong>트리(Tree)</strong>: 위아래(계층)가 명확하고 <strong>사이클이 절대 없는</strong> 특별한 형태의 그래프입니다! (가족관계도, 폴더 구조)
+                        <strong>선생님의 핵심 정리!</strong><br>
+                        • <strong>사이클(Cycle)이란?</strong> 출발한 노드로 다시 돌아올 수 있는 순환 경로입니다.<br>
+                        • <strong>그래프(Graph)</strong>: 사이클이 존재할 수 있는 자유로운 관계망입니다. (예: 도로망, 지하철, SNS 네트워크)<br>
+                        • <strong>트리(Tree)</strong>: 위계(계층)가 존재하며, <strong>사이클이 절대로 없는</strong> 특별한 형태의 그래프입니다! (예: 가족관계도, 폴더 구조)
                     </div>
                 </div>
             </div>
@@ -194,7 +154,7 @@
                 <details class="group">
                     <summary class="font-bold cursor-pointer flex items-center justify-between list-none">
                         <span class="flex items-center gap-1.5">
-                            📖 [학습지 요약] 그래프와 트리의 핵심 구분법
+                            📖 [학습지 요약] 그래프 vs 트리 요약 정리표
                         </span>
                         <span class="transition group-open:rotate-180">▼</span>
                     </summary>
@@ -202,17 +162,17 @@
                         <div class="bg-white/90 p-2.5 rounded-lg border border-amber-200">
                             <strong class="text-purple-800">🌐 그래프 구조 (Graph)</strong>
                             <ul class="list-disc list-inside mt-1 space-y-0.5 text-slate-700">
-                                <li>관계 연결이 자유로움</li>
-                                <li>사이클(순환선)을 <strong>형성할 수 있다</strong>.</li>
-                                <li>예: 이천 지도, 지하철 노선도, 별자리</li>
+                                <li>데이터 간 관계를 선으로 표현</li>
+                                <li>사이클(cycle)을 <strong>형성할 수 있다</strong>.</li>
+                                <li>예: 지하철 노선도, 별자리, 화학 분자구조</li>
                             </ul>
                         </div>
                         <div class="bg-white/90 p-2.5 rounded-lg border border-amber-200">
                             <strong class="text-emerald-800">🌳 트리 구조 (Tree)</strong>
                             <ul class="list-disc list-inside mt-1 space-y-0.5 text-slate-700">
-                                <li>위계/계층 구조를 가짐</li>
-                                <li>사이클(순환선)을 <strong>형성할 수 없다</strong>.</li>
-                                <li>예: 가족관계도, 컴퓨터 폴더, 목차</li>
+                                <li>데이터 간 관계를 <strong>계층</strong>으로 표현</li>
+                                <li>사이클(cycle)을 <strong>형성할 수 없다</strong>.</li>
+                                <li>예: 폴더 구조, 교과목 목차, 가계도</li>
                             </ul>
                         </div>
                     </div>
@@ -225,7 +185,7 @@
         <section class="lg:col-span-5">
             <div class="bg-amber-50/90 rounded-2xl p-4 sm:p-5 shadow-2xs border-2 border-amber-300 flex flex-col gap-3.5 sticky top-4">
                 
-                <!-- Quiz Header (Inspired by Image 2 Design) -->
+                <!-- Quiz Header -->
                 <div class="flex items-center justify-between border-b border-amber-200 pb-2.5">
                     <div class="flex items-center gap-1.5">
                         <span class="text-amber-600 text-lg">✏️</span>
@@ -239,7 +199,7 @@
                 </div>
 
                 <p class="text-xs text-amber-900 leading-snug">
-                    알맞은 단어를 선택해 빈칸을 채우세요! 정답을 맞추면 <strong>초록색 테두리</strong>로 표시되며, 학습지에 적을 수 있는 정답 단어가 나옵니다.
+                    알맞은 단어를 선택해 빈칸을 채우세요! 정답을 맞추면 <strong>초록색 테두리</strong>로 표시되며, 학습지에 채워 넣을 단어가 완성됩니다.
                 </p>
 
                 <!-- Quiz Questions List -->
@@ -259,7 +219,7 @@
                                 <option value="계층">계층</option>
                                 <option value="사이클">사이클</option>
                             </select> 
-                            (이라) 하고, 관계를 선으로 나타낸 것을 
+                            (이라) 하고, 데이터와의 관계를 선으로 나타낸 것을 
                             <select data-answer="간선" class="quiz-select mx-0.5 px-2 py-1 bg-white border border-slate-300 rounded-lg text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-amber-400 transition">
                                 <option value="">(선택)</option>
                                 <option value="노드">노드</option>
@@ -303,7 +263,7 @@
                     <!-- Question 3: Graph Structure -->
                     <div class="bg-white/90 p-3 rounded-xl border border-amber-200 shadow-2xs flex flex-col gap-1.5">
                         <p class="font-bold text-slate-800">
-                            3) 그래프 구조 (이천 지도, 지하철 노선)
+                            3) 그래프 구조 (이천 지도, 지하철)
                         </p>
                         <div class="text-slate-700 leading-relaxed">
                             • 이천 지도 도로망이나 지하철처럼 사이클(cycle)을 
@@ -320,8 +280,8 @@
 
                 <!-- Completion Box -->
                 <div id="completeBox" class="hidden bg-emerald-100 border border-emerald-400 text-emerald-950 p-3 rounded-xl text-center font-extrabold text-xs sm:text-sm shadow-sm animate-bounce">
-                    🎉 축하합니다! 모든 빈칸을 정답으로 맞추셨습니다.<br>
-                    <span class="font-normal text-emerald-800 text-xs">확인한 정답 단어들을 나의 학습지 빈칸에 정확히 적어보세요!</span>
+                    🎉 축하합니다! 모든 빈칸 퀴즈를 완성했습니다.<br>
+                    <span class="font-normal text-emerald-800 text-xs">확인한 정답을 나의 종이 학습지에 알맞게 적어보세요!</span>
                 </div>
 
             </div>
@@ -334,65 +294,28 @@
         정보 교과 수업용 컴퓨팅 사고력 학습 보조 프로그램 | 특성화고 활동지 연계 모듈
     </footer>
 
-    <!-- JavaScript Logic -->
     <script>
-        // State variables
+        // Start completely blank without initial nodes
         let nodes = [];
         let edges = [];
         let nextNodeId = 1;
         let selectedNodeForEdge = null;
-        let currentTool = 'connect'; // 'connect' or 'move'
-        let currentMission = 'mission1'; // 'mission1', 'mission2', 'free'
-        let draggedNode = null;
-        let dragOffset = { x: 0, y: 0 };
 
         // DOM Elements
         const svg = document.getElementById('graphSvg');
         const edgesGroup = document.getElementById('edgesGroup');
         const nodesGroup = document.getElementById('nodesGroup');
         
-        // Floating Toolbar Buttons
-        const floatConnectBtn = document.getElementById('floatConnectBtn');
-        const floatMoveBtn = document.getElementById('floatMoveBtn');
         const floatAddNodeBtn = document.getElementById('floatAddNodeBtn');
         const floatClearBtn = document.getElementById('floatClearBtn');
-        const gradeMissionBtn = document.getElementById('gradeMissionBtn');
 
         const nodeCountBadge = document.getElementById('nodeCountBadge');
+        const selectedNodeBadge = document.getElementById('selectedNodeBadge');
         const structureType = document.getElementById('structureType');
         const cycleStatus = document.getElementById('cycleStatus');
         const cycleBadge = document.getElementById('cycleBadge');
         const helpTextContent = document.getElementById('helpTextContent');
         const helpIcon = document.getElementById('helpIcon');
-        const gradingResultBox = document.getElementById('gradingResultBox');
-        const gradingTitle = document.getElementById('gradingTitle');
-        const gradingDetail = document.getElementById('gradingDetail');
-        const closeGradingBtn = document.getElementById('closeGradingBtn');
-
-        // Mission Configurations & Visual References
-        const missionConfigs = {
-            mission1: {
-                badge: '미션 1 (이천 지도 그래프)',
-                title: '이천시 도로망 연결하기 (그래프 구조)',
-                desc: '이천시내(A), 부발(B), 장호원(C), 학교(D) 사이를 도로로 연결해보세요. 순환선(사이클)이 만들어지는 <strong>그래프 구조</strong>가 완성됩니다!',
-                target: '🎯 목표: 노드 A,B,C,D 모두 연결 & 순환 경로(사이클) 1개 이상 형성',
-                graphic: `<svg viewBox="0 0 120 120" class="w-full h-full"><rect width="120" height="120" fill="#f0f9ff" rx="10"/><path d="M 25 35 L 95 35 L 95 85 L 25 85 Z" stroke="#818cf8" stroke-width="3" stroke-dasharray="4 3" fill="none"/><circle cx="25" cy="35" r="9" fill="#3b82f6"/><text x="25" y="38" font-size="8" font-weight="900" fill="#fff" text-anchor="middle">A</text><circle cx="95" cy="35" r="9" fill="#3b82f6"/><text x="95" y="38" font-size="8" font-weight="900" fill="#fff" text-anchor="middle">B</text><circle cx="95" cy="85" r="9" fill="#3b82f6"/><text x="95" y="88" font-size="8" font-weight="900" fill="#fff" text-anchor="middle">C</text><circle cx="25" cy="85" r="9" fill="#3b82f6"/><text x="25" y="88" font-size="8" font-weight="900" fill="#fff" text-anchor="middle">D</text><text x="60" y="112" font-size="9" font-weight="bold" fill="#1e3a8a" text-anchor="middle">이천시 도로 지도</text></svg>`
-            },
-            mission2: {
-                badge: '미션 2 (가족관계도 트리)',
-                title: '가족관계도 표현하기 (트리 구조)',
-                desc: '할아버지/할머니(A) 아래 부모님(B, C), 그리고 나/동생(D, E)을 위계로 잇는 <strong>트리 구조</strong>를 만드세요. 트리는 <strong>사이클이 절대 존재하면 안 됩니다!</strong>',
-                target: '🎯 목표: 노드 5개 위계적 연결 & 사이클 0개(없음)',
-                graphic: `<svg viewBox="0 0 120 120" class="w-full h-full"><rect width="120" height="120" fill="#ecfdf5" rx="10"/><circle cx="60" cy="22" r="8" fill="#10b981"/><circle cx="35" cy="60" r="8" fill="#10b981"/><circle cx="85" cy="60" r="8" fill="#10b981"/><circle cx="20" cy="95" r="7" fill="#10b981"/><circle cx="50" cy="95" r="7" fill="#10b981"/><line x1="60" y1="22" x2="35" y2="60" stroke="#059669" stroke-width="2.5"/><line x1="60" y1="22" x2="85" y2="60" stroke="#059669" stroke-width="2.5"/><line x1="35" y1="60" x2="20" y2="95" stroke="#059669" stroke-width="2.5"/><line x1="35" y1="60" x2="50" y2="95" stroke="#059669" stroke-width="2.5"/><text x="60" y="113" font-size="9" font-weight="bold" fill="#064e3b" text-anchor="middle">가족관계도 (트리)</text></svg>`
-            },
-            free: {
-                badge: '자유 샌드박스',
-                title: '자유 노드/간선 그리기',
-                desc: '원하는 위치에 마음대로 노드와 간선을 그리고 실시간 구조 판단(그래프 또는 트리)을 확인해 보세요!',
-                target: '🎯 노드와 간선을 자유롭게 연결하며 경험해보기',
-                graphic: `<svg viewBox="0 0 120 120" class="w-full h-full"><rect width="120" height="120" fill="#fffbeb" rx="10"/><circle cx="35" cy="40" r="9" fill="#f59e0b"/><circle cx="85" cy="40" r="9" fill="#f59e0b"/><circle cx="60" cy="85" r="9" fill="#f59e0b"/><line x1="35" y1="40" x2="85" y2="40" stroke="#d97706" stroke-width="3"/><line x1="85" y1="40" x2="60" y2="85" stroke="#d97706" stroke-width="3"/><text x="60" y="112" font-size="9" font-weight="bold" fill="#78350f" text-anchor="middle">자유 샌드박스</text></svg>`
-            }
-        };
 
         function getNodeLabel(index) {
             const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -402,17 +325,23 @@
 
         function createNode(x, y, customName = null) {
             const label = customName || getNodeLabel(nodes.length);
+            const rect = svg.getBoundingClientRect();
+            
+            // Default center placement if coordinates not given
+            const posX = x !== undefined ? x : Math.floor(rect.width / 2) + (Math.random() * 40 - 20);
+            const posY = y !== undefined ? y : Math.floor(rect.height / 2) + (Math.random() * 40 - 20);
+
             const newNode = {
                 id: nextNodeId++,
                 label: label,
-                x: x || Math.floor(Math.random() * (svg.clientWidth - 120)) + 60,
-                y: y || Math.floor(Math.random() * (svg.clientHeight - 120)) + 60
+                x: posX,
+                y: posY
             };
             nodes.push(newNode);
             renderGraph();
         }
 
-        // Cycle Detection Logic (Undirected Graph)
+        // Undirected Graph Cycle Detection
         function findCycleEdges() {
             const cycleEdgeIndices = new Set();
             edges.forEach((edge, idx) => {
@@ -478,25 +407,31 @@
             const cycleEdgeSet = findCycleEdges();
             const hasCycle = cycleEdgeSet.size > 0;
 
-            // Educational Structure Evaluation
-            if (hasCycle) {
+            // Real-Time Evaluation
+            if (nodes.length === 0) {
+                structureType.innerHTML = '<span class="text-slate-400">캔버스를 터치해 노드를 만들어보세요</span>';
+                cycleStatus.innerHTML = '<span class="text-slate-400">없음</span>';
+                cycleBadge.classList.add('hidden');
+                helpIcon.textContent = "💡";
+                helpTextContent.textContent = "하얀 캔버스의 허공을 터치하여 첫 노드를 만들어보세요!";
+            } else if (hasCycle) {
                 cycleBadge.classList.remove('hidden');
-                cycleStatus.innerHTML = '🔄 <span class="text-purple-700 font-extrabold">순환선(사이클)이 있음 ➔ 그래프 구조</span>';
-                structureType.innerHTML = '🌐 <span class="text-purple-900 font-extrabold">그래프 구조 (Graph)</span> <span class="text-xs text-slate-500 font-normal block">도로망/지도처럼 순환선 존재</span>';
+                cycleStatus.innerHTML = '🔄 <span class="text-purple-700 font-extrabold">순환선(사이클) 존재</span>';
+                structureType.innerHTML = '🌐 <span class="text-purple-900 font-extrabold">그래프 구조 (Graph)</span> <span class="text-xs text-slate-500 font-normal block">한 번 지나온 노드로 되돌아오는 사이클이 존재합니다!</span>';
             } else {
                 cycleBadge.classList.add('hidden');
                 cycleStatus.innerHTML = '✨ <span class="text-emerald-700 font-bold">사이클 없음</span>';
                 
-                if (nodes.length > 0 && edges.length === nodes.length - 1 && isConnected()) {
-                    structureType.innerHTML = '🌳 <span class="text-emerald-800 font-extrabold">트리 구조 (Tree)</span> <span class="text-xs text-emerald-600 font-normal block">사이클이 전혀 없는 계층 구조</span>';
+                if (nodes.length > 1 && edges.length === nodes.length - 1 && isConnected()) {
+                    structureType.innerHTML = '🌳 <span class="text-emerald-800 font-extrabold">트리 구조 (Tree)</span> <span class="text-xs text-emerald-600 font-normal block">사이클이 없고 모두 하나의 뿌리로 이어진 계층 구조입니다!</span>';
                 } else {
-                    structureType.innerHTML = '🌐 <span class="text-indigo-900 font-extrabold">그래프 구조 (Graph)</span> <span class="text-xs text-slate-500 font-normal block">자유롭게 연결된 네트워크</span>';
+                    structureType.innerHTML = '🌐 <span class="text-indigo-900 font-extrabold">그래프 구조 (Graph)</span> <span class="text-xs text-slate-500 font-normal block">사이클은 없지만 자유로운 관계망 형태의 그래프입니다.</span>';
                 }
             }
 
             nodeCountBadge.textContent = `노드 ${nodes.length}개 / 간선 ${edges.length}개`;
 
-            // Render Edge Lines
+            // Render Edges
             edges.forEach((edge, idx) => {
                 const uNode = nodes.find(n => n.id === edge.u);
                 const vNode = nodes.find(n => n.id === edge.v);
@@ -529,68 +464,123 @@
                 const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
                 g.setAttribute('transform', `translate(${node.x}, ${node.y})`);
                 g.setAttribute('class', 'cursor-pointer');
+                g.style.touchAction = 'none';
 
                 const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
                 circle.setAttribute('r', '24');
                 circle.setAttribute('fill', isSelected ? '#f59e0b' : '#3b82f6');
                 circle.setAttribute('stroke', isSelected ? '#d97706' : '#1d4ed8');
-                circle.setAttribute('stroke-width', '3');
-                circle.setAttribute('class', 'transition-transform hover:scale-110');
+                circle.setAttribute('stroke-width', '3.5');
+                circle.style.touchAction = 'none';
 
                 const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                 text.setAttribute('text-anchor', 'middle');
                 text.setAttribute('dy', '.35em');
                 text.setAttribute('fill', '#ffffff');
                 text.setAttribute('font-weight', 'bold');
-                text.setAttribute('font-size', '11px');
+                text.setAttribute('font-size', '14px');
                 text.setAttribute('pointer-events', 'none');
                 text.textContent = node.label;
 
                 g.appendChild(circle);
                 g.appendChild(text);
 
-                g.addEventListener('mousedown', (e) => onNodeMouseDown(e, node));
-                g.addEventListener('touchstart', (e) => onNodeTouchStart(e, node), { passive: false });
+                // Attach Stylus / Touch / Mouse Drag & Tap Interaction
+                setupNodeInteraction(g, node);
 
                 nodesGroup.appendChild(g);
             });
         }
 
-        function onNodeMouseDown(e, node) {
-            e.stopPropagation();
-            if (currentTool === 'connect') {
-                handleNodeClickForEdge(node.id);
-            } else {
-                draggedNode = node;
-                const rect = svg.getBoundingClientRect();
-                dragOffset.x = e.clientX - rect.left - node.x;
-                dragOffset.y = e.clientY - rect.top - node.y;
-            }
+        // Unified Tablet Touch & Mouse Interaction Handler
+        function setupNodeInteraction(element, node) {
+            let isDragging = false;
+            let startX = 0;
+            let startY = 0;
+            let initialNodeX = 0;
+            let initialNodeY = 0;
+            let dragThresholdExceeded = false;
+
+            const onStart = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                isDragging = true;
+                dragThresholdExceeded = false;
+
+                const point = getEventPoint(e);
+                startX = point.x;
+                startY = point.y;
+                initialNodeX = node.x;
+                initialNodeY = node.y;
+
+                window.addEventListener('pointermove', onMove, { passive: false });
+                window.addEventListener('pointerup', onEnd, { passive: false });
+                window.addEventListener('pointercancel', onEnd, { passive: false });
+            };
+
+            const onMove = (e) => {
+                if (!isDragging) return;
+                e.preventDefault();
+
+                const point = getEventPoint(e);
+                const dx = point.x - startX;
+                const dy = point.y - startY;
+
+                if (Math.hypot(dx, dy) > 6) {
+                    dragThresholdExceeded = true;
+                }
+
+                if (dragThresholdExceeded) {
+                    const rect = svg.getBoundingClientRect();
+                    let newX = initialNodeX + dx;
+                    let newY = initialNodeY + dy;
+
+                    // Constrain inside bounds
+                    newX = Math.max(30, Math.min(rect.width - 30, newX));
+                    newY = Math.max(30, Math.min(rect.height - 30, newY));
+
+                    node.x = newX;
+                    node.y = newY;
+                    renderGraph();
+                }
+            };
+
+            const onEnd = (e) => {
+                if (!isDragging) return;
+                isDragging = false;
+
+                window.removeEventListener('pointermove', onMove);
+                window.removeEventListener('pointerup', onEnd);
+                window.removeEventListener('pointercancel', onEnd);
+
+                if (!dragThresholdExceeded) {
+                    // Tap on Node -> Edge Connection
+                    handleNodeTapForEdge(node.id);
+                }
+            };
+
+            element.addEventListener('pointerdown', onStart, { passive: false });
         }
 
-        function onNodeTouchStart(e, node) {
-            e.stopPropagation();
-            e.preventDefault();
-            const touch = e.touches[0];
-            if (currentTool === 'connect') {
-                handleNodeClickForEdge(node.id);
-            } else {
-                draggedNode = node;
-                const rect = svg.getBoundingClientRect();
-                dragOffset.x = touch.clientX - rect.left - node.x;
-                dragOffset.y = touch.clientY - rect.top - node.y;
+        function getEventPoint(e) {
+            if (e.touches && e.touches.length > 0) {
+                return { x: e.touches[0].clientX, y: e.touches[0].clientY };
             }
+            return { x: e.clientX, y: e.clientY };
         }
 
-        function handleNodeClickForEdge(nodeId) {
+        function handleNodeTapForEdge(nodeId) {
             if (selectedNodeForEdge === null) {
                 selectedNodeForEdge = nodeId;
+                selectedNodeBadge.classList.remove('hidden');
                 helpIcon.textContent = "🎯";
-                helpTextContent.textContent = "첫 번째 노드가 선택되었습니다! 연결할 두 번째 노드를 선택하세요.";
+                helpTextContent.textContent = "첫 번째 노드가 선택되었습니다! 연결할 두 번째 노드를 터치하세요.";
             } else if (selectedNodeForEdge === nodeId) {
                 selectedNodeForEdge = null;
-                helpIcon.textContent = "🖊️";
-                helpTextContent.textContent = "노드 선택이 취소되었습니다. 원하는 노드를 다시 선택하세요.";
+                selectedNodeBadge.classList.add('hidden');
+                helpIcon.textContent = "💡";
+                helpTextContent.textContent = "선택이 취소되었습니다. 노드를 터치해 이으거나 드래그하여 이동하세요.";
             } else {
                 const u = selectedNodeForEdge;
                 const v = nodeId;
@@ -602,208 +592,53 @@
                 } else {
                     edges = edges.filter(e => !((e.u === u && e.v === v) || (e.u === v && e.v === u)));
                     helpIcon.textContent = "✂️";
-                    helpTextContent.textContent = "연결되어 있던 간선을 해제하였습니다.";
+                    helpTextContent.textContent = "연결되어 있던 간선을 해제했습니다.";
                 }
                 selectedNodeForEdge = null;
+                selectedNodeBadge.classList.add('hidden');
             }
             renderGraph();
         }
 
-        // Dragging Event Listeners
-        svg.addEventListener('mousemove', (e) => {
-            if (draggedNode) {
+        // Empty Canvas Tap creates new node
+        svg.addEventListener('pointerdown', (e) => {
+            if (e.target === svg || e.target.id === 'edgesGroup' || e.target.id === 'nodesGroup') {
                 const rect = svg.getBoundingClientRect();
-                draggedNode.x = Math.max(30, Math.min(rect.width - 30, e.clientX - rect.left - dragOffset.x));
-                draggedNode.y = Math.max(30, Math.min(rect.height - 30, e.clientY - rect.top - dragOffset.y));
-                renderGraph();
-            }
-        });
+                const point = getEventPoint(e);
+                const x = point.x - rect.left;
+                const y = point.y - rect.top;
 
-        svg.addEventListener('mouseup', () => { draggedNode = null; });
-
-        svg.addEventListener('touchmove', (e) => {
-            if (draggedNode && e.touches.length > 0) {
-                const touch = e.touches[0];
-                const rect = svg.getBoundingClientRect();
-                draggedNode.x = Math.max(30, Math.min(rect.width - 30, touch.clientX - rect.left - dragOffset.x));
-                draggedNode.y = Math.max(30, Math.min(rect.height - 30, touch.clientY - rect.top - dragOffset.y));
-                renderGraph();
-            }
-        }, { passive: false });
-
-        svg.addEventListener('touchend', () => { draggedNode = null; });
-
-        svg.addEventListener('click', (e) => {
-            if (e.target === svg || e.target.parentNode === svg) {
-                const rect = svg.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                createNode(x, y);
-            }
-        });
-
-        // Auto-Grading Engine for Mission 1 & Mission 2
-        function gradeCurrentMission() {
-            const cycleEdgeSet = findCycleEdges();
-            const hasCycle = cycleEdgeSet.size > 0;
-            const connected = isConnected();
-
-            gradingResultBox.classList.remove('hidden', 'bg-emerald-50', 'border-emerald-300', 'text-emerald-900', 'bg-amber-50', 'border-amber-300', 'text-amber-900');
-
-            if (currentMission === 'mission1') {
-                // Goal: Icheon Map (Graph Structure with at least 4 nodes and 1 cycle)
-                if (nodes.length >= 4 && hasCycle) {
-                    gradingResultBox.classList.add('bg-emerald-50', 'border-emerald-300', 'text-emerald-900');
-                    gradingTitle.innerHTML = '🎉 [정답!] 이천 지도 그래프 완벽 성공!';
-                    gradingDetail.innerHTML = `멋집니다! 이천시내, 부발, 학교, 장호원이 도로로 이어지고 <strong>순환선(보라색 점선 사이클)</strong>이 형성되어 <strong>그래프 구조</strong>가 정확히 완성되었습니다!`;
-                } else if (nodes.length < 4) {
-                    gradingResultBox.classList.add('bg-amber-50', 'border-amber-300', 'text-amber-900');
-                    gradingTitle.innerHTML = '💡 [힌트] 노드가 더 필요합니다.';
-                    gradingDetail.innerHTML = `4개 장소(이천시내, 부발, 학교, 장호원)를 표현하기 위해 노드를 추가해보세요. (버튼 ➕ 클릭)`;
-                } else if (!hasCycle) {
-                    gradingResultBox.classList.add('bg-amber-50', 'border-amber-300', 'text-amber-900');
-                    gradingTitle.innerHTML = '💡 [힌트] 순환 경로(사이클)를 만들어보세요!';
-                    gradingDetail.innerHTML = `도로망이나 지도는 출발지로 돌아오는 <strong>순환선(사이클)</strong>이 존재합니다. 간선을 이어 사이클(보라색 점선)을 완성해보세요.`;
+                // Ensure touch isn't too close to existing node
+                const tooClose = nodes.some(n => Math.hypot(n.x - x, n.y - y) < 35);
+                if (!tooClose) {
+                    createNode(x, y);
+                    selectedNodeForEdge = null;
+                    selectedNodeBadge.classList.add('hidden');
+                    helpIcon.textContent = "✨";
+                    helpTextContent.textContent = "새 노드가 생성되었습니다! 노드 2개를 터치해 연결해보세요.";
                 }
-            } else if (currentMission === 'mission2') {
-                // Goal: Family Tree (Tree Structure: >= 4 nodes, connected, ZERO cycles)
-                if (nodes.length >= 4 && connected && !hasCycle && edges.length === nodes.length - 1) {
-                    gradingResultBox.classList.add('bg-emerald-50', 'border-emerald-300', 'text-emerald-900');
-                    gradingTitle.innerHTML = '🎉 [정답!] 가족관계도 트리 구조 성공!';
-                    gradingDetail.innerHTML = `완벽합니다! 사이클이 전혀 없고 위계(할아버지 ➔ 부모님 ➔ 나)를 가진 <strong>트리 구조</strong>가 완성되었습니다.`;
-                } else if (hasCycle) {
-                    gradingResultBox.classList.add('bg-amber-50', 'border-amber-300', 'text-amber-900');
-                    gradingTitle.innerHTML = '💡 [힌트] 가족관계도에는 사이클이 없어야 합니다!';
-                    gradingDetail.innerHTML = `<strong>트리 구조(가족관계도)</strong>는 되돌아오는 사이클이 존재할 수 없습니다. 보라색 사이클 선을 눌러 해제해보세요.`;
-                } else if (nodes.length < 4) {
-                    gradingResultBox.classList.add('bg-amber-50', 'border-amber-300', 'text-amber-900');
-                    gradingTitle.innerHTML = '💡 [힌트] 노드를 더 추가해보세요.';
-                    gradingDetail.innerHTML = `할아버지, 부모님, 자녀를 표현하기 위해 노드 4개 이상이 필요합니다.`;
-                } else if (!connected) {
-                    gradingResultBox.classList.add('bg-amber-50', 'border-amber-300', 'text-amber-900');
-                    gradingTitle.innerHTML = '💡 [힌트] 가족들을 간선으로 하나로 이으세요!';
-                    gradingDetail.innerHTML = `떨어져 있는 노드가 있습니다. 간선을 연결해 하나의 가족 트리로 완성하세요.`;
-                }
-            } else {
-                gradingResultBox.classList.add('bg-emerald-50', 'border-emerald-300', 'text-emerald-900');
-                gradingTitle.innerHTML = '🎨 [자유 모드 상태 분석]';
-                gradingDetail.innerHTML = `현재 구조는 노드 ${nodes.length}개, 간선 ${edges.length}개의 ${hasCycle ? '<strong>그래프 구조(사이클 있음)</strong>' : '<strong>트리/그래프 구조(사이클 없음)</strong>'} 입니다!`;
             }
-        }
-
-        // Load Preset Mission Data
-        function loadMission(missionKey) {
-            currentMission = missionKey;
-            const config = missionConfigs[missionKey];
-
-            document.getElementById('missionBadge').textContent = config.badge;
-            document.getElementById('missionTitle').textContent = config.title;
-            document.getElementById('missionDesc').innerHTML = config.desc;
-            document.getElementById('missionTargetGoal').textContent = config.target;
-            document.getElementById('missionGraphic').innerHTML = config.graphic;
-
-            gradingResultBox.classList.add('hidden');
-
-            if (missionKey === 'mission1') {
-                nodes = [
-                    { id: 1, label: 'A(이천시내)', x: 120, y: 100 },
-                    { id: 2, label: 'B(부발)', x: 280, y: 100 },
-                    { id: 3, label: 'C(장호원)', x: 280, y: 260 },
-                    { id: 4, label: 'D(학교)', x: 120, y: 260 }
-                ];
-                edges = [
-                    { u: 1, v: 2 },
-                    { u: 2, v: 3 },
-                    { u: 3, v: 4 }
-                ]; // One more edge needed between 4 and 1 to create cycle graph
-                nextNodeId = 5;
-            } else if (missionKey === 'mission2') {
-                nodes = [
-                    { id: 1, label: 'A(할아버지)', x: 200, y: 60 },
-                    { id: 2, label: 'B(아버지)', x: 110, y: 170 },
-                    { id: 3, label: 'C(삼촌)', x: 290, y: 170 },
-                    { id: 4, label: 'D(나)', x: 60, y: 290 },
-                    { id: 5, label: 'E(동생)', x: 160, y: 290 }
-                ];
-                edges = [
-                    { u: 1, v: 2 },
-                    { u: 1, v: 3 },
-                    { u: 2, v: 4 },
-                    { u: 2, v: 5 }
-                ];
-                nextNodeId = 6;
-            } else {
-                nodes = [
-                    { id: 1, label: 'A', x: 140, y: 120 },
-                    { id: 2, label: 'B', x: 260, y: 120 }
-                ];
-                edges = [{ u: 1, v: 2 }];
-                nextNodeId = 3;
-            }
-
-            selectedNodeForEdge = null;
-            renderGraph();
-        }
-
-        // Tab Switching Handlers
-        document.getElementById('tabMission1').addEventListener('click', (e) => {
-            updateTabStyles(e.currentTarget);
-            loadMission('mission1');
         });
 
-        document.getElementById('tabMission2').addEventListener('click', (e) => {
-            updateTabStyles(e.currentTarget);
-            loadMission('mission2');
+        // Floating Action Buttons
+        floatAddNodeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            createNode();
         });
 
-        document.getElementById('tabFree').addEventListener('click', (e) => {
-            updateTabStyles(e.currentTarget);
-            loadMission('free');
-        });
-
-        function updateTabStyles(activeBtn) {
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.className = 'tab-btn px-3 py-2 rounded-xl text-xs sm:text-sm font-extrabold flex items-center gap-1.5 transition whitespace-nowrap bg-slate-100 text-slate-600 hover:bg-slate-200';
-            });
-            activeBtn.className = 'tab-btn px-3 py-2 rounded-xl text-xs sm:text-sm font-extrabold flex items-center gap-1.5 transition whitespace-nowrap bg-indigo-600 text-white shadow-xs';
-        }
-
-        // Floating Control Toolbar Listeners
-        floatConnectBtn.addEventListener('click', () => {
-            currentTool = 'connect';
-            floatConnectBtn.className = "px-3 py-2 bg-indigo-600 text-white rounded-xl text-xs font-extrabold flex items-center gap-1.5 shadow-xs transition active:scale-95";
-            floatMoveBtn.className = "px-3 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition active:scale-95";
-            helpIcon.textContent = "🖊️";
-            helpTextContent.textContent = "간선 연결 모드: 노드 두 개를 눌러 선을 이어보세요!";
-            selectedNodeForEdge = null;
-            renderGraph();
-        });
-
-        floatMoveBtn.addEventListener('click', () => {
-            currentTool = 'move';
-            floatMoveBtn.className = "px-3 py-2 bg-slate-800 text-white rounded-xl text-xs font-extrabold flex items-center gap-1.5 shadow-xs transition active:scale-95";
-            floatConnectBtn.className = "px-3 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition active:scale-95";
-            helpIcon.textContent = "✋";
-            helpTextContent.textContent = "노드 이동 모드: 노드를 마우스나 손가락으로 드래그하여 이동하세요!";
-            selectedNodeForEdge = null;
-            renderGraph();
-        });
-
-        floatAddNodeBtn.addEventListener('click', () => createNode());
-
-        floatClearBtn.addEventListener('click', () => {
+        floatClearBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
             nodes = [];
             edges = [];
             nextNodeId = 1;
             selectedNodeForEdge = null;
-            gradingResultBox.classList.add('hidden');
+            selectedNodeBadge.classList.add('hidden');
+            helpIcon.textContent = "🔄";
+            helpTextContent.textContent = "캔버스가 초기화되었습니다. 새로 만들어보세요!";
             renderGraph();
         });
 
-        gradeMissionBtn.addEventListener('click', gradeCurrentMission);
-        closeGradingBtn.addEventListener('click', () => gradingResultBox.classList.add('hidden'));
-
-        // Quiz evaluation logic (matching Image 2 design & request)
+        // Quiz Evaluation Logic
         const quizSelects = document.querySelectorAll('.quiz-select');
         const quizScore = document.getElementById('quizScore');
         const completeBox = document.getElementById('completeBox');
@@ -849,9 +684,9 @@
 
         quizSelects.forEach(select => select.addEventListener('change', evaluateQuiz));
 
-        // Initial launch on load
+        // Initial launch
         window.onload = function() {
-            loadMission('mission1');
+            renderGraph();
         };
 
     </script>
